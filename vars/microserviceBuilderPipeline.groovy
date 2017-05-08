@@ -1,5 +1,5 @@
 #!groovy
-# Copyright (c) IBM 2017
+// Copyright (c) IBM 2017
 
 /*------------------------
   Typical usage:
@@ -69,7 +69,7 @@ def call(body) {
               registry = "${registry}/"
             }
             sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
-            sh "docker push ${registry}${appName}:${gitCommit}"
+            sh "docker push ${registry}${image}:${gitCommit}"
           }
         }
       }
