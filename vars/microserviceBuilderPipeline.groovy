@@ -1,5 +1,5 @@
 #!groovy
-# Copyright (c) IBM 2017
+// Copyright (c) IBM 2017
 
 /*------------------------
   Typical usage:
