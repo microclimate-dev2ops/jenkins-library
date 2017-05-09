@@ -46,7 +46,8 @@ def call(body) {
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
     ],
     volumes: [
-        hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')
+        hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock'),
+        secretVolume(secretName: 'admin.registrykey', mountPath: '/root')
     ]
   ){
     node('msbPod') {
@@ -68,6 +69,7 @@ def call(body) {
             if (!registry.endsWith('/')) {
               registry = "${registry}/"
             }
+            sh "ln -s /root/.dockercfg /home/jenkins/.dockercfg"
             sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
             sh "docker push ${registry}${image}:${gitCommit}"
           }
@@ -76,7 +78,7 @@ def call(body) {
 
       stage ('deploy') {
         container ('kubectl') {
-          sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${image}:${gitCommit}|g\'"
+          sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${registry}${image}:${gitCommit}|g\'"
           sh 'kubectl apply -f manifests'
         }
       }
