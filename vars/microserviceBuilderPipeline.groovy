@@ -20,6 +20,7 @@
 
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
+    deployBranch = 'master' - only builds from this branch are deployed
 
 -------------------------*/
 
@@ -34,16 +35,18 @@ def call(body) {
   print "microserviceBuilderPipeline: config = ${config}"
 
   def image = config.image
-  def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.maven
-  def docker = (config.dockerImage == null) ? 'docker' : config.docker
-  def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectl
+  def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.mavenImage
+  def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
+  def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectlImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   def registrySecret = System.getenv("REGISTRY_SECRET").trim()
   def build = (config.build ?: System.getenv ("BUILD")).trim().toLowerCase() == 'true'
   def deploy = (config.deploy ?: System.getenv ("DEPLOY")).trim().toLowerCase() == 'true'
+  // Extra elvis here to cope with env var being absent until pipeline chart catches up
+  def deployBranch = config.deployBranch ?: ((System.getenv("DEFAULT_DEPLOY_BRANCH") ?: "").trim() ?: 'master')
 
-  print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} deploy=${deploy}"
+  print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} deploy=${deploy} deployBranch=${deployBranch}"
 
   /* Only mount registry secret if it's present */
   def volumes = [ hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock') ]
@@ -92,7 +95,7 @@ def call(body) {
         }
       }
 
-      if (deploy) {
+      if (deploy && env.BRANCH_NAME == deployBranch) {
         stage ('deploy') {
           container ('kubectl') {
             sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${registry}${image}:${gitCommit}|g\'"
