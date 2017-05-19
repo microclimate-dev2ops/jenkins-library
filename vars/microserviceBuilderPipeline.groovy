@@ -99,7 +99,7 @@ def call(body) {
         }
       }
 
-      if (deploy && env.BRANCH_NAME == deployBranch) {
+      if (deploy && env.BRANCH_NAME == deployBranch && fileExists('manifests')) {
         stage ('deploy') {
           container ('kubectl') {
             sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${registry}${image}:${gitCommit}|g\'"
