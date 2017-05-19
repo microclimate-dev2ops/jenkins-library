@@ -74,39 +74,45 @@ def call(body) {
     node('msbPod') {
       def gitCommit
 
-      stage ('extract') {
+      stage ('Extract') {
         checkout scm
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         echo "checked out git commit ${gitCommit}"
       }
 
       if (build) {
-        stage ('build') {
-          container ('maven') {
-            sh "mvn -B ${mvnCommands}"
+        if (fileExists('pom.xml')) {
+          stage ('Maven Build') {
+            container ('maven') {
+              sh "mvn -B ${mvnCommands}"
+            }
           }
-          container ('docker') {
-            sh "docker build -t ${image}:${gitCommit} ."
-            if (registry) {
-              if (!registry.endsWith('/')) {
-                registry = "${registry}/"
+        }
+        if (fileExists('Dockerfile')) {
+          stage ('Docker Build') {
+            container ('docker') {
+              sh "docker build -t ${image}:${gitCommit} ."
+              if (registry) {
+                if (!registry.endsWith('/')) {
+                  registry = "${registry}/"
+                }
+                sh "ln -s /root/.dockercfg /home/jenkins/.dockercfg"
+                sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
+                sh "docker push ${registry}${image}:${gitCommit}"
               }
-              sh "ln -s /root/.dockercfg /home/jenkins/.dockercfg"
-              sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
-              sh "docker push ${registry}${image}:${gitCommit}"
             }
           }
         }
       }
 
       if (deploy && env.BRANCH_NAME == deployBranch && fileExists('manifests')) {
-        stage ('deploy') {
+        stage ('Deploy') {
           container ('kubectl') {
             sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${registry}${image}:${gitCommit}|g\'"
 
             def deployCommand = "kubectl apply -f manifests"
             if (namespace) {
-              deployString += " --namespace ${namespace} "
+              deployCommand += " --namespace ${namespace} "
             }
             sh deployCommand
           }
