@@ -21,6 +21,8 @@
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
     deployBranch = 'master' - only builds from this branch are deployed
+    namespace = 'targetNamespace' - deploys into Kubernetes targetNamespace.
+      Default is to deploy into Jenkins' namespace.
 
 -------------------------*/
 
@@ -43,10 +45,12 @@ def call(body) {
   def registrySecret = System.getenv("REGISTRY_SECRET").trim()
   def build = (config.build ?: System.getenv ("BUILD")).trim().toLowerCase() == 'true'
   def deploy = (config.deploy ?: System.getenv ("DEPLOY")).trim().toLowerCase() == 'true'
+  def namespace = config.namespace ?: (System.getenv("NAMESPACE") ?: "").trim()
+
   // Extra elvis here to cope with env var being absent until pipeline chart catches up
   def deployBranch = config.deployBranch ?: ((System.getenv("DEFAULT_DEPLOY_BRANCH") ?: "").trim() ?: 'master')
 
-  print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} deploy=${deploy} deployBranch=${deployBranch}"
+  print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} deploy=${deploy} deployBranch=${deployBranch} namespace=${namespace}"
 
   /* Only mount registry secret if it's present */
   def volumes = [ hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock') ]
@@ -99,7 +103,12 @@ def call(body) {
         stage ('deploy') {
           container ('kubectl') {
             sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${registry}${image}:${gitCommit}|g\'"
-            sh 'kubectl apply -f manifests'
+
+            def deployCommand = "kubectl apply -f manifests"
+            if (namespace) {
+              deployString += " --namespace ${namespace} "
+            }
+            sh deployCommand
           }
         }
       }
