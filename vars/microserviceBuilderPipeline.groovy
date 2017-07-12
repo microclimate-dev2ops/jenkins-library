@@ -14,6 +14,7 @@
     mavenImage = 'maven:3.5.0-jdk-8'
     dockerImage = 'docker'
     kubectlImage = 'lachlanevenson/k8s-kubectl:v1.6.0'
+    helmImage = 'lachlanevenson/k8s-helm:v2.4.1'
     mvnCommands = 'clean package'
 
   You can also specify:
@@ -23,6 +24,8 @@
     test = 'true' - `mvn verify` is run if this value is `true` and a pom.xml exists
     debug = 'false' - namespaces created during tests are deleted unless this value is set to 'true'
     deployBranch = 'master' - only builds from this branch are deployed
+    chartFolder = 'chart' - folder containing helm deployment chart
+    manifestFolder = 'manifests' - folder containing kubectl deployment manifests
     namespace = 'targetNamespace' - deploys into Kubernetes targetNamespace.
       Default is to deploy into Jenkins' namespace.
 
@@ -48,6 +51,7 @@ def call(body) {
   def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectlImage
+  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.4.1' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   def registrySecret = System.getenv("REGISTRY_SECRET").trim()
@@ -55,13 +59,16 @@ def call(body) {
   def deploy = (config.deploy ?: System.getenv ("DEPLOY")).trim().toLowerCase() == 'true'
   def namespace = config.namespace ?: (System.getenv("NAMESPACE") ?: "").trim()
 
-  // 'deploy', 'test' and 'debug' options were all added later. Helm chart may not have the associated properties set. 
+  // these options were all added later. Helm chart may not have the associated properties set. 
   def test = (config.test ?: (System.getenv ("TEST") ?: "false").trim()).toLowerCase() == 'true'
   def debug = (config.debug ?: (System.getenv ("DEBUG") ?: "false").trim()).toLowerCase() == 'true'
   def deployBranch = config.deployBranch ?: ((System.getenv("DEFAULT_DEPLOY_BRANCH") ?: "").trim() ?: 'master')
+  def chartFolder = config.chartFolder ?: ((System.getenv("CHART_FOLDER") ?: "").trim() ?: 'chart')
+  def manifestFolder = config.manifestFolder ?: ((System.getenv("MANIFEST_FOLDER") ?: "").trim() ?: 'manifests')
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
-  deploy=${deploy} deployBranch=${deployBranch} test=${test} debug=${debug} namespace=${namespace}"
+  deploy=${deploy} deployBranch=${deployBranch} test=${test} debug=${debug} namespace=${namespace} \
+  chartFolder=${chartFolder} manifestFolder=${manifestFolder}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace. 
   // In that case we'll need the registrySecret to have been ported over, perhaps during pipeline install. 
@@ -88,6 +95,7 @@ def call(body) {
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
     ],
     volumes: volumes
   ){
@@ -123,10 +131,10 @@ def call(body) {
         }
       }
 
-      /* replace '${image}:latest' with '${registry}{image}:${gitcommit}' in manifests/*
-         We'll need this so that we can use manifests/ for test or deployment.
+      /* replace '${image}:latest' with '${registry}{image}:${gitcommit}' in yaml folder
+         We'll need this so that we can use folder for test or deployment.
          It's only a local change and not committed back to git. */
-      sh "find manifests -type f | xargs sed -i \'s|${image}:latest|${registry}${image}:${gitCommit}|g\'"
+      sh "find ${chartFolder} ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
 
       if (test && fileExists('pom.xml')) {
         stage ('Verify') {
@@ -156,14 +164,33 @@ def call(body) {
         }
       }
 
-      if (deploy && env.BRANCH_NAME == deployBranch && fileExists('manifests')) {
+      if (deploy && env.BRANCH_NAME == deployBranch) {
         stage ('Deploy') {
-          container ('kubectl') {
-            def deployCommand = "kubectl apply -f manifests"
-            if (namespace) {
-              deployCommand += " --namespace ${namespace} "
+          if (fileExists(chartFolder)) {
+            container ('helm') {
+              sh "helm init --client-only"
+              try {
+                def deployCommand = "helm upgrade ${image} ${chartFolder}"
+                if (namespace) deployCommand += " --namespace ${namespace}"
+                sh deployCommand
+              } catch (err1) {
+                echo "Caught: ${err1}"
+                try {
+                  def deployCommand = "helm --name ${image} install ${chartFolder} --replace"
+                  if (namespace) deployCommand += " --namespace ${namespace}"
+                  sh deployCommand
+                } catch (err2) {
+                  echo "Caught: ${err2}"
+                  currentBuild.result = 'FAILURE'
+                }
+              }
             }
-            sh deployCommand
+          } else if (fileExists(manifestFolder)) {
+            container ('kubectl') {
+              def deployCommand = "kubectl apply -f ${manifestFolder}"
+              if (namespace) deployCommand += " --namespace ${namespace}"
+              sh deployCommand
+            }
           }
         }
       }
