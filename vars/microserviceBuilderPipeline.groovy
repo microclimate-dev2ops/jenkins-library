@@ -88,7 +88,8 @@ def call(body) {
     containers: [
       containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat',
         envVars: [
-          containerEnvVar(key: 'KUBERNETES_NAMESPACE', value: testNamespace)
+          containerEnvVar(key: 'ENV_INIT_ENABLED', value: 'false'),
+          containerEnvVar(key: 'NAMESPACE_USE_EXISTING', value: testNamespace)
         ]),
       containerTemplate(name: 'docker', image: docker, command: 'cat', ttyEnabled: true,
         envVars: [
@@ -143,12 +144,10 @@ def call(body) {
           container ('kubectl') {
             sh "kubectl create namespace ${testNamespace}"
             sh "kubectl label namespace ${testNamespace} test=true"
-
-            giveRegistryAccessToNamespace (testNamespace, registrySecret)
-
+            if (registrySecret) { 
+              giveRegistryAccessToNamespace (testNamespace, registrySecret)
+            }
             sh "kubectl apply -f manifests --namespace ${testNamespace}"
-
-            
           }
           container ('maven') {
             try {
