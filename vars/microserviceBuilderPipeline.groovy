@@ -120,12 +120,14 @@ def call(body) {
           stage ('Docker Build') {
             container ('docker') {
               sh "docker build -t ${image}:${gitCommit} ."
-              if (!registry.endsWith('/')) {
-                registry = "${registry}/"
+              if (registry) { 
+                if (!registry.endsWith('/')) {
+                  registry = "${registry}/"
+                }
+                sh "ln -s /root/.dockercfg /home/jenkins/.dockercfg"
+                sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
+                sh "docker push ${registry}${image}:${gitCommit}"
               }
-              sh "ln -s /root/.dockercfg /home/jenkins/.dockercfg"
-              sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
-              sh "docker push ${registry}${image}:${gitCommit}"
             }
           }
         }
