@@ -76,7 +76,7 @@ def call(body) {
   // Only mount registry secret if it's present
   def volumes = [ hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock') ]
   if (registrySecret) {
-    volumes += secretVolume(secretName: registrySecret, mountPath: '/root')
+    volumes += secretVolume(secretName: registrySecret, mountPath: '/msb_reg_sec')
   }
   print "microserviceBuilderPipeline: volumes = ${volumes}"
 
@@ -125,7 +125,7 @@ def call(body) {
                 if (!registry.endsWith('/')) {
                   registry = "${registry}/"
                 }
-                sh "ln -s /root/.dockercfg /home/jenkins/.dockercfg"
+                sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
                 sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
                 sh "docker push ${registry}${image}:${gitCommit}"
               }
