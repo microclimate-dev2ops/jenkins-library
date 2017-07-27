@@ -143,14 +143,20 @@ def call(body) {
 
       if (test && fileExists('pom.xml')) {
         stage ('Verify') {
+          String tempHelmRelease = (image + "-" + testNamespace).substring(0,52) // 53 is max length in Helm
           container ('kubectl') {
             sh "kubectl create namespace ${testNamespace}"
             sh "kubectl label namespace ${testNamespace} test=true"
             if (registrySecret) { 
               giveRegistryAccessToNamespace (testNamespace, registrySecret)
             }
-            sh "kubectl apply -f manifests --namespace ${testNamespace}"
           }
+          // We're moving to Helm-only deployments. Use Helm to install a deployment to test against. 
+          container ('helm') {
+            sh "helm init --client-only"
+            sh "helm install ${chartFolder} --set test=true --namespace ${testNamespace} --name ${tempHelmRelease} --wait"
+          }
+
           container ('maven') {
             try {
               sh "mvn -B verify"
@@ -160,6 +166,9 @@ def call(body) {
               if (!debug) {
                 container ('kubectl') {
                   sh "kubectl delete namespace ${testNamespace}"
+                  if (fileExists(chartFolder)) { 
+                    sh "helm delete ${tempHelmRelease} --purge"
+                  }
                 }
               }
             }
@@ -169,22 +178,26 @@ def call(body) {
 
       if (deploy && env.BRANCH_NAME == deployBranch) {
         stage ('Deploy') {
-          if (fileExists(chartFolder)) {
-            container ('helm') {
-              sh "helm init --client-only"
-              def deployCommand = "helm upgrade --install ${image} ${chartFolder}"
-              if (namespace) deployCommand += " --namespace ${namespace}"
-              sh deployCommand
-            }
-          } else if (fileExists(manifestFolder)) {
-            container ('kubectl') {
-              def deployCommand = "kubectl apply -f ${manifestFolder}"
-              if (namespace) deployCommand += " --namespace ${namespace}"
-              sh deployCommand
-            }
-          }
+          deployProject (chartFolder, image, namespace, manifestFolder)
         }
       }
+    }
+  }
+}
+
+def deployProject (String chartFolder, String image, String namespace, String manifestFolder) { 
+  if (fileExists(chartFolder)) {
+    container ('helm') {
+      sh "helm init --client-only"
+      def deployCommand = "helm upgrade --install ${image} ${chartFolder}"
+      if (namespace) deployCommand += " --namespace ${namespace}"
+      sh deployCommand
+    }
+  } else if (fileExists(manifestFolder)) {
+    container ('kubectl') {
+      def deployCommand = "kubectl apply -f ${manifestFolder}"
+      if (namespace) deployCommand += " --namespace ${namespace}"
+      sh deployCommand
     }
   }
 }
