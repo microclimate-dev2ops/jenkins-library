@@ -125,7 +125,9 @@ def call(body) {
                 if (!registry.endsWith('/')) {
                   registry = "${registry}/"
                 }
-                sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
+                if (registrySecret) { 
+                  sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
+                }
                 sh "docker tag ${image}:${gitCommit} ${registry}${image}:${gitCommit}"
                 sh "docker push ${registry}${image}:${gitCommit}"
               }
@@ -170,21 +172,9 @@ def call(body) {
           if (fileExists(chartFolder)) {
             container ('helm') {
               sh "helm init --client-only"
-              try {
-                def deployCommand = "helm upgrade ${image} ${chartFolder}"
-                if (namespace) deployCommand += " --namespace ${namespace}"
-                sh deployCommand
-              } catch (err1) {
-                echo "Caught: ${err1}"
-                try {
-                  def deployCommand = "helm --name ${image} install ${chartFolder} --replace"
-                  if (namespace) deployCommand += " --namespace ${namespace}"
-                  sh deployCommand
-                } catch (err2) {
-                  echo "Caught: ${err2}"
-                  currentBuild.result = 'FAILURE'
-                }
-              }
+              def deployCommand = "helm upgrade --install ${image} ${chartFolder}"
+              if (namespace) deployCommand += " --namespace ${namespace}"
+              sh deployCommand
             }
           } else if (fileExists(manifestFolder)) {
             container ('kubectl') {
@@ -224,8 +214,8 @@ def giveRegistryAccessToNamespace (String namespace, String registrySecret) {
 
   String sa = sh (script: "kubectl get sa default -o json --namespace ${namespace}", returnStdout: true).trim()
   /*
-      JsonSlurper is not thread safe, not serializable, and not good to use in Jenkins jobs. See 
-      https://stackoverflow.com/questions/37864542/jenkins-pipeline-notserializableexception-groovy-json-internal-lazymap
+      Use JsonSlurperClassic because JsonSlurper is not thread safe, not serializable, and not good to use in Jenkins jobs. 
+      See https://stackoverflow.com/questions/37864542/jenkins-pipeline-notserializableexception-groovy-json-internal-lazymap
   */
   def map = new JsonSlurperClassic().parseText (sa) 
   map.metadata.remove ('resourceVersion')
