@@ -141,7 +141,7 @@ def call(body) {
          It's only a local change and not committed back to git. */
       sh "find ${chartFolder} ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
 
-      if (test && fileExists('pom.xml')) {
+      if (test && fileExists('pom.xml') && fileExists(chartFolder)) {
         stage ('Verify') {
           String tempHelmRelease = (image + "-" + testNamespace).substring(0,52) // 53 is max length in Helm
           container ('kubectl') {
