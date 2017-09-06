@@ -66,7 +66,6 @@ def call(body) {
   // will need to check later if user provided chartFolder location
   def userSpecifiedChartFolder = config.chartFolder 
   def chartFolder = userSpecifiedChartFolder ?: ((System.getenv("CHART_FOLDER") ?: "").trim() ?: 'chart')
-  def chartFolder = config.chartFolder ?: ((System.getenv("CHART_FOLDER") ?: "").trim() ?: 'chart')
   def manifestFolder = config.manifestFolder ?: ((System.getenv("MANIFEST_FOLDER") ?: "").trim() ?: 'manifests')
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
