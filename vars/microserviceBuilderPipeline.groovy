@@ -275,9 +275,14 @@ def getChartFolder(String userSpecified, String currentChartFolder) {
             return newChartLocation
         }
       } else {
-          newChartLocation = currentChartFolder + "/" + dirList.get(0).getName()
-          print "Only one child directory found, setting realChartFolder to: ${newChartLocation}"
-          return newChartLocation
+          if (dirList.size() == 1) {
+            newChartLocation = currentChartFolder + "/" + dirList.get(0).getName()
+            print "Only one child directory found, setting realChartFolder to: ${newChartLocation}"
+            return newChartLocation
+	  } else {
+            print "Chart directory has no subdirectories, incorrect configuration"
+	    return null
+	  }
       }
     }
 }
