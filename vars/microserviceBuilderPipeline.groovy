@@ -172,7 +172,9 @@ def call(body) {
                 container ('kubectl') {
                   sh "kubectl delete namespace ${testNamespace}"
                   if (fileExists(realChartFolder)) { 
-                    sh "helm delete ${tempHelmRelease} --purge"
+		    container ('helm') {
+                      sh "helm delete ${tempHelmRelease} --purge"
+		    }
                   }
                 }
               }
