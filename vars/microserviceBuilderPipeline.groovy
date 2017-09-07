@@ -246,12 +246,13 @@ def giveRegistryAccessToNamespace (String namespace, String registrySecret) {
 }
 
 def getChartFolder(String userSpecified, String currentChartFolder) {  
+  
   def newChartLocation = ""
   if (userSpecified) {
-    print "user defined chart location specified: ${userSpecified}"
+    print "User defined chart location specified: ${userSpecified}"
     return userSpecified
   } else {
-      print "finding actual chart folder below ${env.WORKSPACE}/${currentChartFolder}..."
+      print "Finding actual chart folder below ${env.WORKSPACE}/${currentChartFolder}..."
       def fp = new hudson.FilePath(Jenkins.getInstance().getComputer(env['NODE_NAME']).getChannel(), env.WORKSPACE + "/" + currentChartFolder)
       def dirList = fp.listDirectories()
       if (dirList.size() > 1) {
@@ -266,22 +267,36 @@ def getChartFolder(String userSpecified, String currentChartFolder) {
           }
         }
         if (yamlList.size() > 1) {
-          newChartLocation = currentChartFolder + "/" + yamlList.get(0).getName()
-          print "More than one directory with Chart.yaml, selecting first found: ${newChartLocation}"
-          return newChartLocation
+	  print "-----------------------------------------------------------"
+          print "*** More than one directory with Chart.yaml in ${env.WORKSPACE}/${currentChartFolder}."
+	  print "*** Please specify chart folder to use in your Jenkinsfile."
+	  print "*** Returning null."
+	  print "-----------------------------------------------------------"
+          return null
         } else {
-            newChartLocation = currentChartFolder + "/" + yamlList.get(0).getName()
-            print "Chart.yaml found in ${newChartLocation}, setting as realChartFolder"
-            return newChartLocation
+	    if (yamlList.size() == 1) {
+              newChartLocation = currentChartFolder + "/" + yamlList.get(0).getName()
+              print "Chart.yaml found in ${newChartLocation}, setting as realChartFolder"
+              return newChartLocation
+	    } else {
+	        print "*** No sub directory in ${env.WORKSPACE}/${currentChartFolder} contains a Chart.yaml, returning null"
+	        return null
+	    }
         }
       } else {
           if (dirList.size() == 1) {
-            newChartLocation = currentChartFolder + "/" + dirList.get(0).getName()
-            print "Only one child directory found, setting realChartFolder to: ${newChartLocation}"
-            return newChartLocation
+	    def chartFile = new hudson.FilePath(dirList.get(0), "Chart.yaml")
+	    newChartLocation = currentChartFolder + "/" + dirList.get(0).getName()
+	    if (chartFile.exists()) {
+              print "Only one child directory found, setting realChartFolder to: ${newChartLocation}"
+              return newChartLocation
+	    } else {
+                print "*** Chart.yaml file does not exist in ${newChartLocation}, returning null"
+		return null
+	    }
 	  } else {
-            print "Chart directory has no subdirectories, incorrect configuration"
-	    return null
+              print "*** Chart directory ${env.WORKSPACE}/${currentChartFolder} has no subdirectories, incorrect configuration, returning null"
+	      return null
 	  }
       }
     }
