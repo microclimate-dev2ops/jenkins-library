@@ -279,7 +279,9 @@ def getChartFolder(String userSpecified, String currentChartFolder) {
               print "Chart.yaml found in ${newChartLocation}, setting as realChartFolder"
               return newChartLocation
 	    } else {
+	        print "-----------------------------------------------------------"
 	        print "*** No sub directory in ${env.WORKSPACE}/${currentChartFolder} contains a Chart.yaml, returning null"
+		print "-----------------------------------------------------------"
 	        return null
 	    }
         }
@@ -291,11 +293,15 @@ def getChartFolder(String userSpecified, String currentChartFolder) {
               print "Only one child directory found, setting realChartFolder to: ${newChartLocation}"
               return newChartLocation
 	    } else {
+	        print "-----------------------------------------------------------"
                 print "*** Chart.yaml file does not exist in ${newChartLocation}, returning null"
+		print "-----------------------------------------------------------"
 		return null
 	    }
 	  } else {
+	      print "-----------------------------------------------------------"
               print "*** Chart directory ${env.WORKSPACE}/${currentChartFolder} has no subdirectories, incorrect configuration, returning null"
+	      print "-----------------------------------------------------------"
 	      return null
 	  }
       }
