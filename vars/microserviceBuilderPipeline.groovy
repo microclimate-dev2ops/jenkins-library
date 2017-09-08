@@ -63,7 +63,9 @@ def call(body) {
   def test = (config.test ?: (System.getenv ("TEST") ?: "false").trim()).toLowerCase() == 'true'
   def debug = (config.debug ?: (System.getenv ("DEBUG") ?: "false").trim()).toLowerCase() == 'true'
   def deployBranch = config.deployBranch ?: ((System.getenv("DEFAULT_DEPLOY_BRANCH") ?: "").trim() ?: 'master')
-  def chartFolder = config.chartFolder ?: ((System.getenv("CHART_FOLDER") ?: "").trim() ?: 'chart')
+  // will need to check later if user provided chartFolder location
+  def userSpecifiedChartFolder = config.chartFolder 
+  def chartFolder = userSpecifiedChartFolder ?: ((System.getenv("CHART_FOLDER") ?: "").trim() ?: 'chart')
   def manifestFolder = config.manifestFolder ?: ((System.getenv("MANIFEST_FOLDER") ?: "").trim() ?: 'manifests')
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
@@ -136,12 +138,15 @@ def call(body) {
         }
       }
 
+      // find the likely chartFolder location
+      def realChartFolder = getChartFolder(userSpecifiedChartFolder, chartFolder)
+
       /* replace '${image}:latest' with '${registry}{image}:${gitcommit}' in yaml folder
          We'll need this so that we can use folder for test or deployment.
          It's only a local change and not committed back to git. */
-      sh "find ${chartFolder} ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
+      sh "find ${realChartFolder} ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
 
-      if (test && fileExists('pom.xml') && fileExists(chartFolder)) {
+      if (test && fileExists('pom.xml') && fileExists(realChartFolder)) {
         stage ('Verify') {
           String tempHelmRelease = (image + "-" + testNamespace).substring(0,52) // 53 is max length in Helm
           container ('kubectl') {
@@ -154,7 +159,7 @@ def call(body) {
           // We're moving to Helm-only deployments. Use Helm to install a deployment to test against. 
           container ('helm') {
             sh "helm init --client-only"
-            sh "helm install ${chartFolder} --set test=true --namespace ${testNamespace} --name ${tempHelmRelease} --wait"
+            sh "helm install ${realChartFolder} --set test=true --namespace ${testNamespace} --name ${tempHelmRelease} --wait"
           }
 
           container ('maven') {
@@ -166,8 +171,10 @@ def call(body) {
               if (!debug) {
                 container ('kubectl') {
                   sh "kubectl delete namespace ${testNamespace}"
-                  if (fileExists(chartFolder)) { 
-                    sh "helm delete ${tempHelmRelease} --purge"
+                  if (fileExists(realChartFolder)) { 
+		    container ('helm') {
+                      sh "helm delete ${tempHelmRelease} --purge"
+		    }
                   }
                 }
               }
@@ -178,7 +185,7 @@ def call(body) {
 
       if (deploy && env.BRANCH_NAME == deployBranch) {
         stage ('Deploy') {
-          deployProject (chartFolder, image, namespace, manifestFolder)
+          deployProject (realChartFolder, image, namespace, manifestFolder)
         }
       }
     }
@@ -237,3 +244,67 @@ def giveRegistryAccessToNamespace (String namespace, String registrySecret) {
   writeFile file: 'temp.json', text: json
   sh "kubectl replace sa default --namespace ${namespace} -f temp.json"
 }
+
+def getChartFolder(String userSpecified, String currentChartFolder) {  
+  
+  def newChartLocation = ""
+  if (userSpecified) {
+    print "User defined chart location specified: ${userSpecified}"
+    return userSpecified
+  } else {
+      print "Finding actual chart folder below ${env.WORKSPACE}/${currentChartFolder}..."
+      def fp = new hudson.FilePath(Jenkins.getInstance().getComputer(env['NODE_NAME']).getChannel(), env.WORKSPACE + "/" + currentChartFolder)
+      def dirList = fp.listDirectories()
+      if (dirList.size() > 1) {
+        print "More than one directory in ${env.WORKSPACE}/${currentChartFolder}..."
+        print "Directories found are:"
+        def yamlList = []
+        for (d in dirList) {
+          print "${d}"
+          def fileToTest = new hudson.FilePath(d, "Chart.yaml")
+          if (fileToTest.exists()) {
+            yamlList.add(d)
+          }
+        }
+        if (yamlList.size() > 1) {
+	  print "-----------------------------------------------------------"
+          print "*** More than one directory with Chart.yaml in ${env.WORKSPACE}/${currentChartFolder}."
+	  print "*** Please specify chart folder to use in your Jenkinsfile."
+	  print "*** Returning null."
+	  print "-----------------------------------------------------------"
+          return null
+        } else {
+	    if (yamlList.size() == 1) {
+              newChartLocation = currentChartFolder + "/" + yamlList.get(0).getName()
+              print "Chart.yaml found in ${newChartLocation}, setting as realChartFolder"
+              return newChartLocation
+	    } else {
+	        print "-----------------------------------------------------------"
+	        print "*** No sub directory in ${env.WORKSPACE}/${currentChartFolder} contains a Chart.yaml, returning null"
+		print "-----------------------------------------------------------"
+	        return null
+	    }
+        }
+      } else {
+          if (dirList.size() == 1) {
+	    def chartFile = new hudson.FilePath(dirList.get(0), "Chart.yaml")
+	    newChartLocation = currentChartFolder + "/" + dirList.get(0).getName()
+	    if (chartFile.exists()) {
+              print "Only one child directory found, setting realChartFolder to: ${newChartLocation}"
+              return newChartLocation
+	    } else {
+	        print "-----------------------------------------------------------"
+                print "*** Chart.yaml file does not exist in ${newChartLocation}, returning null"
+		print "-----------------------------------------------------------"
+		return null
+	    }
+	  } else {
+	      print "-----------------------------------------------------------"
+              print "*** Chart directory ${env.WORKSPACE}/${currentChartFolder} has no subdirectories, incorrect configuration, returning null"
+	      print "-----------------------------------------------------------"
+	      return null
+	  }
+      }
+    }
+}
+
