@@ -146,7 +146,7 @@ def call(body) {
          It's only a local change and not committed back to git. */
       sh "find ${realChartFolder} ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
 
-      if (test && fileExists('pom.xml') && fileExists(realChartFolder)) {
+      if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
         stage ('Verify') {
           String tempHelmRelease = (image + "-" + testNamespace).substring(0,52) // 53 is max length in Helm
           container ('kubectl') {
@@ -193,7 +193,7 @@ def call(body) {
 }
 
 def deployProject (String chartFolder, String image, String namespace, String manifestFolder) { 
-  if (fileExists(chartFolder)) {
+  if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
       sh "helm init --client-only"
       def deployCommand = "helm upgrade --install ${image} ${chartFolder}"
