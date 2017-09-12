@@ -138,13 +138,19 @@ def call(body) {
         }
       }
 
-      // find the likely chartFolder location
-      def realChartFolder = getChartFolder(userSpecifiedChartFolder, chartFolder)
+      def realChartFolder = null
+      if (fileExists(chartFolder)) {
+        // find the likely chartFolder location
+        realChartFolder = getChartFolder(userSpecifiedChartFolder, chartFolder)
+	
+	/* replace '${image}:latest' with '${registry}{image}:${gitcommit}' in yaml folder
+	   We'll need this so that we can use folder for test or deployment.
+	   It's only a local change and not committed back to git. */
+	sh "find ${realChartFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
+      } else {
+        sh "find ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
 
-      /* replace '${image}:latest' with '${registry}{image}:${gitcommit}' in yaml folder
-         We'll need this so that we can use folder for test or deployment.
-         It's only a local change and not committed back to git. */
-      sh "find ${realChartFolder} ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
+      }
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
         stage ('Verify') {
@@ -300,7 +306,7 @@ def getChartFolder(String userSpecified, String currentChartFolder) {
 	    }
 	  } else {
 	      print "-----------------------------------------------------------"
-              print "*** Chart directory ${env.WORKSPACE}/${currentChartFolder} has no subdirectories, incorrect configuration, returning null"
+              print "*** Chart directory ${env.WORKSPACE}/${currentChartFolder} has no subdirectories, returning null"
 	      print "-----------------------------------------------------------"
 	      return null
 	  }
