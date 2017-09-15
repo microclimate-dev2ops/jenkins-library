@@ -15,6 +15,7 @@
     dockerImage = 'docker'
     kubectlImage = 'lachlanevenson/k8s-kubectl:v1.6.0'
     helmImage = 'lachlanevenson/k8s-helm:v2.4.1'
+    istioctlImage = 'ibmcom/istioctl:1.6.0'
     mvnCommands = 'clean package'
 
   You can also specify:
@@ -53,6 +54,7 @@ def call(body) {
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.4.1' : config.helmImage
+  def istioctl = (config.istioctlImage == null) ? 'ibmcom/istioctl' : config.istioctlImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   def registrySecret = System.getenv("REGISTRY_SECRET").trim()
@@ -102,6 +104,7 @@ def call(body) {
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'istioctl', image: istioctl, ttyEnabled: true, command: 'cat')
     ],
     volumes: volumes
   ) {
@@ -209,6 +212,16 @@ def call(body) {
       if (deploy && env.BRANCH_NAME == deployBranch) {
         stage ('Deploy') {
           deployProject (realChartFolder, image, namespace, manifestFolder)
+        }
+      }
+
+      if (fileExists('istio.yaml')) {
+        container ('istioctl') {
+          try {
+            sh (script: "istioctl replace -f istio.yaml", returnStdout: true).trim()
+          } catch (Exception x) {
+            sh "istioctl create -f istio.yaml"
+          }
         }
       }
     }
