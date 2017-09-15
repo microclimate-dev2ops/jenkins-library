@@ -127,11 +127,13 @@ def call(body) {
             container ('docker') {
               def buildCommand = "docker build -t ${image}:${gitCommit}"
               if (libertyLicenseJarBaseUrl) {
-                buildCommand += " --build-arg LICENSE_JAR_URL=" + libertyLicenseJarBaseUrl
-                if (!libertyLicenseJarBaseUrl.endsWith("/")) {
-                  buildCommand += "/"
+                if (readFile('Dockerfile').contains('LICENSE_JAR_URL')) {
+                  buildCommand += " --build-arg LICENSE_JAR_URL=" + libertyLicenseJarBaseUrl
+                  if (!libertyLicenseJarBaseUrl.endsWith("/")) {
+                    buildCommand += "/"
+                  }
+                  buildCommand += libertyLicenseJarName
                 }
-                buildCommand += libertyLicenseJarName
               }
               buildCommand += " ."
               sh buildCommand
