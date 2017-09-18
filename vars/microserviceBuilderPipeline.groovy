@@ -16,10 +16,10 @@
     kubectlImage = 'lachlanevenson/k8s-kubectl:v1.6.0'
     helmImage = 'lachlanevenson/k8s-helm:v2.4.1'
     istioctlImage = 'ibmcom/istioctl:1.6.0'
-    mvnCommands = 'clean package'
 
   You can also specify:
 
+    mvnCommands = 'clean package'
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
     test = 'true' - `mvn verify` is run if this value is `true` and a pom.xml exists
@@ -54,7 +54,7 @@ def call(body) {
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.4.1' : config.helmImage
-  def istioctl = (config.istioctlImage == null) ? 'ibmcom/istioctl' : config.istioctlImage
+  def istioctl = (config.istioctlImage == null) ? 'ibmcom/istioctl:1.6.0' : config.istioctlImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   def registrySecret = System.getenv("REGISTRY_SECRET").trim()
