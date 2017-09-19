@@ -232,12 +232,13 @@ def deployProject (String chartFolder, String image, String namespace, String ma
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
       sh "helm init --client-only"
-      def deployCommand = "helm upgrade --install ${image}"
+      def deployCommand = "helm upgrade --install"
       if (fileExists("chart/overrides.yaml")) {
         deployCommand += " --values chart/overrides.yaml"
       }
       if (namespace) deployCommand += " --namespace ${namespace}"
-      deployCommand += " ${chartFolder}"
+      def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
+      deployCommand += " ${releaseName} ${chartFolder}"
       sh deployCommand
     }
   } else if (fileExists(manifestFolder)) {
