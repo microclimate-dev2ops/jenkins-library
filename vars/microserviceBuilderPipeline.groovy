@@ -166,7 +166,7 @@ def call(body) {
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
         stage ('Verify') {
           String tempHelmRelease = (image + "-" + testNamespace)
-          if (tempHelmRelease.length > 53) tempHelmRelease = tempHelmRelease.substring(0,52) // 53 is max length in Helm
+          if (tempHelmRelease.length() > 53) tempHelmRelease = tempHelmRelease.substring(0,52) // 53 is max length in Helm
           container ('kubectl') {
             sh "kubectl create namespace ${testNamespace}"
             sh "kubectl label namespace ${testNamespace} test=true"
