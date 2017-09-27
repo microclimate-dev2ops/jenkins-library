@@ -142,11 +142,11 @@ def call(body) {
                 }
               }
               buildCommand += " ."
+              if (registrySecret) {
+                sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
+              }
               sh buildCommand
               if (registry) {
-                if (registrySecret) {
-                  sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
-                }
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
                 sh "docker push ${registry}${image}:${imageTag}"
               }
