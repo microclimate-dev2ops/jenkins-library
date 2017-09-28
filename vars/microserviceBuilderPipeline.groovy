@@ -159,6 +159,10 @@ def call(body) {
       if (fileExists(chartFolder)) {
         // find the likely chartFolder location
         realChartFolder = getChartFolder(userSpecifiedChartFolder, chartFolder)
+        def yamlContent = "image:"
+        yamlContent += "\n  repository: ${registry}${image}"
+        if (imageTag) yamlContent += "\n  tag: \\\"${imageTag}\\\""
+        sh "echo \"${yamlContent}\" > pipeline.yaml"
       } else {
         sh "find ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\):latest|\\1${registry}\\2:${gitCommit}|g\'"
       }
@@ -177,7 +181,7 @@ def call(body) {
           // We're moving to Helm-only deployments. Use Helm to install a deployment to test against.
           container ('helm') {
             sh "helm init --client-only"
-            def deployCommand = "helm install ${realChartFolder} --wait --set test=true,image.repository=${registry}${image},image.tag=${imageTag} --namespace ${testNamespace} --name ${tempHelmRelease}"
+            def deployCommand = "helm install ${realChartFolder} --wait --set test=true --values pipeline.yaml --namespace ${testNamespace} --name ${tempHelmRelease}"
             if (fileExists("chart/overrides.yaml")) {
               deployCommand += " --values chart/overrides.yaml"
             }
@@ -228,8 +232,7 @@ def deployProject (String chartFolder, String registry, String image, String ima
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
       sh "helm init --client-only"
-      def deployCommand = "helm upgrade --install --set image.repository=${registry}${image}"
-      if (imageTag) deployCommand += ",image.tag=${imageTag}"
+      def deployCommand = "helm upgrade --install --values pipeline.yaml"
       if (fileExists("chart/overrides.yaml")) {
         deployCommand += " --values chart/overrides.yaml"
       }
