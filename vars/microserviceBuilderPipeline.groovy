@@ -15,7 +15,6 @@
     dockerImage = 'docker'
     kubectlImage = 'lachlanevenson/k8s-kubectl:v1.6.0'
     helmImage = 'lachlanevenson/k8s-helm:v2.4.1'
-    istioctlImage = 'ibmcom/istioctl:1.6.0'
 
   You can also specify:
 
@@ -54,13 +53,12 @@ def call(body) {
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.4.1' : config.helmImage
-  def istioctl = (config.istioctlImage == null) ? 'ibmcom/istioctl:1.6.0' : config.istioctlImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
   def registrySecret = System.getenv("REGISTRY_SECRET").trim()
-  def build = (config.build ?: System.getenv ("BUILD")).trim().toLowerCase() == 'true'
-  def deploy = (config.deploy ?: System.getenv ("DEPLOY")).trim().toLowerCase() == 'true'
+  def build = (config.build ?: System.getenv ("BUILD")).toBoolean()
+  def deploy = (config.deploy ?: System.getenv ("DEPLOY")).toBoolean()
   def namespace = config.namespace ?: (System.getenv("NAMESPACE") ?: "").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
@@ -105,7 +103,6 @@ def call(body) {
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
-      containerTemplate(name: 'istioctl', image: istioctl, ttyEnabled: true, command: 'cat')
     ],
     volumes: volumes
   ) {
@@ -215,16 +212,6 @@ def call(body) {
       if (deploy && env.BRANCH_NAME == deployBranch) {
         stage ('Deploy') {
           deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder)
-        }
-      }
-
-      if (fileExists('istio.yaml')) {
-        container ('istioctl') {
-          try {
-            sh (script: "istioctl replace -f istio.yaml", returnStdout: true).trim()
-          } catch (Exception x) {
-            sh "istioctl create -f istio.yaml"
-          }
         }
       }
     }
