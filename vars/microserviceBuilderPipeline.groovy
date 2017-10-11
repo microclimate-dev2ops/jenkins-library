@@ -11,10 +11,10 @@
   The following parameters may also be specified. Their defaults are shown below.
   These are the names of images to be downloaded from https://hub.docker.com/.
 
-    mavenImage = 'maven:3.5.0-jdk-8'
+    mavenImage = 'maven:jdk-8'
     dockerImage = 'docker'
-    kubectlImage = 'lachlanevenson/k8s-kubectl:v1.6.0'
-    helmImage = 'lachlanevenson/k8s-helm:v2.4.1'
+    kubectlImage = 'ibmcom/k8s-kubectl:v1.7.6'
+    helmImage = 'ibmcom/k8s-helm:v2.5.0'
 
   You can also specify:
 
@@ -49,10 +49,10 @@ def call(body) {
   print "microserviceBuilderPipeline : config = ${config}"
 
   def image = config.image
-  def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.mavenImage
+  def maven = (config.mavenImage == null) ? 'maven:jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
-  def kubectl = (config.kubectlImage == null) ? 'lachlanevenson/k8s-kubectl:v1.6.0' : config.kubectlImage
-  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.4.1' : config.helmImage
+  def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.7.6' : config.kubectlImage
+  def helm = (config.helmImage == null) ? 'ibmcom/k8s-helm:v2.5.0' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
