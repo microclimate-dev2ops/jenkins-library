@@ -14,7 +14,7 @@
     mavenImage = 'maven:3.5.0-jdk-8'
     dockerImage = 'docker'
     kubectlImage = 'ibmcom/k8s-kubectl:v1.7.6'
-    helmImage = 'ibmcom/k8s-helm:v2.5.0'
+    helmImage = 'lachlanevenson/k8s-helm:v2.5.0'
 
   You can also specify:
 
@@ -52,7 +52,7 @@ def call(body) {
   def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.7.6' : config.kubectlImage
-  def helm = (config.helmImage == null) ? 'ibmcom/k8s-helm:v2.5.0' : config.helmImage
+  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.5.0' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
