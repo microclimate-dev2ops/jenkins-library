@@ -14,7 +14,7 @@
     mavenImage = 'maven:3.5.0-jdk-8'
     dockerImage = 'docker'
     kubectlImage = 'ibmcom/k8s-kubectl:v1.7.6'
-    helmImage = 'lachlanevenson/k8s-helm:v2.5.0'
+    helmImage = 'ibmcom/k8s-helm:v2.5.0'
 
   You can also specify:
 
@@ -52,7 +52,7 @@ def call(body) {
   def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.7.6' : config.kubectlImage
-  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.5.0' : config.helmImage
+  def helm = (config.helmImage == null) ? 'ibmcom/k8s-helm:v2.5.0' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = System.getenv("REGISTRY").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
@@ -180,8 +180,8 @@ def call(body) {
           }
           // We're moving to Helm-only deployments. Use Helm to install a deployment to test against.
           container ('helm') {
-            sh "helm init --client-only"
-            def deployCommand = "helm install ${realChartFolder} --wait --set test=true --values pipeline.yaml --namespace ${testNamespace} --name ${tempHelmRelease}"
+            sh "/helm init --client-only --skip-refresh"
+            def deployCommand = "/helm install ${realChartFolder} --wait --set test=true --values pipeline.yaml --namespace ${testNamespace} --name ${tempHelmRelease}"
             if (fileExists("chart/overrides.yaml")) {
               deployCommand += " --values chart/overrides.yaml"
             }
@@ -199,7 +199,7 @@ def call(body) {
                   sh "kubectl delete namespace ${testNamespace}"
                   if (fileExists(realChartFolder)) {
                     container ('helm') {
-                      sh "helm delete ${tempHelmRelease} --purge"
+                      sh "/helm delete ${tempHelmRelease} --purge"
                     }
                   }
                 }
@@ -221,8 +221,8 @@ def call(body) {
 def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder) {
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
-      sh "helm init --client-only"
-      def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
+      sh "/helm init --client-only --skip-refresh"
+      def deployCommand = "/helm upgrade --install --wait --values pipeline.yaml"
       if (fileExists("chart/overrides.yaml")) {
         deployCommand += " --values chart/overrides.yaml"
       }
