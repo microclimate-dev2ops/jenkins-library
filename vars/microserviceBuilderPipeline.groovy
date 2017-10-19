@@ -50,7 +50,7 @@ def call(body) {
 
   def image = config.image
   def maven = (config.mavenImage == null) ? 'maven:3.5.0-jdk-8' : config.mavenImage
-  def docker = (config.dockerImage == null) ? 'docker' : config.dockerImage
+  def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.7.6' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'ibmcom/k8s-helm:v2.5.0' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
