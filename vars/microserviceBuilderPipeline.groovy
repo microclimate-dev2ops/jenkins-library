@@ -91,6 +91,7 @@ def call(body) {
 
     podTemplate(
     label: 'msbPod',
+    inheritFrom: 'default',
     containers: [
       containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat',
         envVars: [
