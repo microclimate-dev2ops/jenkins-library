@@ -176,7 +176,7 @@ def call(body) {
             sh "kubectl create namespace ${testNamespace}"
             sh "kubectl label namespace ${testNamespace} test=true"
             if (registrySecret) {
-              giveRegistryAccessToNamespace (testNamespace)
+              giveRegistryAccessToNamespace (testNamespace, registrySecret)
             }
           }
           // We're moving to Helm-only deployments. Use Helm to install a deployment to test against.
@@ -249,9 +249,9 @@ def deployProject (String chartFolder, String registry, String image, String ima
   2. Modify 'default' serviceaccount to use ported registrySecret.
 */
 
-def giveRegistryAccessToNamespace (String namespace) {
-  sh "kubectl get secret admin.registrykey -o json --namespace default | sed 's/\"namespace\": \"default\"/\"namespace\": \"${namespace}\"/g' | kubectl create -f -"
-  sh "kubectl patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"myregistrykey\"}]}' --namespace ${namespace}"
+def giveRegistryAccessToNamespace (String namespace, String registrySecret) {
+  sh "kubectl get secret ${registrySecret} -o json --namespace default | sed 's/\"namespace\": \"default\"/\"namespace\": \"${namespace}\"/g' | kubectl create -f -"
+  sh "kubectl patch serviceaccount default -p '{\"imagePullSecrets\": [{\"name\": \"${registrySecret}\"}]}' --namespace ${namespace}"
 }
 
 def getChartFolder(String userSpecified, String currentChartFolder) {
