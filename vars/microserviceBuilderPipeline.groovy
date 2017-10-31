@@ -162,10 +162,8 @@ def call(body) {
         if (imageTag) yamlContent += "\n  tag: \\\"${imageTag}\\\""
         sh "echo \"${yamlContent}\" > pipeline.yaml"
       } else {
-        if (!sh (script: "grep -h -r image:.* ${manifestFolder}", returnStdout: true).contains("/")) {
-          sh "find ${manifestFolder} -type f | xargs sed -i \'s|\\(image:\\s*\\)\\(.*\\)|\\1${registry}\\2|g\'"
-        } 
-        sh "find ${manifestFolder} -type f | xargs sed -i -e 's/:latest/:${gitCommit}/g'"
+        sh "find ${manifestFolder} -type f | xargs sed -i 's|\\(image:\\s*\\)${image}:latest|\\1${registry}${image}:latest|g'"
+        sh "find ${manifestFolder} -type f | xargs sed -i 's|\\(image:\\s*\\)${registry}${image}:latest|\\1${registry}${image}:${gitCommit}|g'"
       }
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
