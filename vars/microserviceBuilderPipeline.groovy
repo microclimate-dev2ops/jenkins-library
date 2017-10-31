@@ -93,11 +93,7 @@ def call(body) {
     label: 'msbPod',
     inheritFrom: 'default',
     containers: [
-      containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat',
-        envVars: [
-          containerEnvVar(key: 'ENV_INIT_ENABLED', value: 'false'),
-          containerEnvVar(key: 'NAMESPACE_USE_EXISTING', value: testNamespace)
-        ]),
+      containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'docker', image: docker, command: 'cat', ttyEnabled: true,
         envVars: [
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
@@ -191,7 +187,7 @@ def call(body) {
 
           container ('maven') {
             try {
-              sh "mvn -B verify"
+              sh "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false verify"
             } finally {
               step([$class: 'JUnitResultArchiver', allowEmptyResults: true, testResults: '**/target/failsafe-reports/*.xml'])
               step([$class: 'ArtifactArchiver', artifacts: '**/target/failsafe-reports/*.txt', allowEmptyArchive: true])
