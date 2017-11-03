@@ -87,10 +87,7 @@ def call(body) {
   }
   print "microserviceBuilderPipeline: volumes = ${volumes}"
 
-  testNamespace = "testns-${env.BUILD_ID}-" + UUID.randomUUID()
-  print "testing against namespace " + testNamespace
-
-    podTemplate(
+  podTemplate(
     label: 'msbPod',
     inheritFrom: 'default',
     containers: [
@@ -168,8 +165,10 @@ def call(body) {
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
         stage ('Verify') {
+          testNamespace = "testns-${env.BUILD_ID}-" + UUID.randomUUID()
+          print "testing against namespace " + testNamespace
           String tempHelmRelease = (image + "-" + testNamespace)
-          if (tempHelmRelease.length() > 53) tempHelmRelease = tempHelmRelease.substring(0,52) // 53 is max length in Helm
+          if (tempHelmRelease.length() > 53) tempHelmRelease = tempHelmRelease.substring(0,51) + "X" // 53 is max length in Helm. Name cannot end '-'. 
           container ('kubectl') {
             sh "kubectl create namespace ${testNamespace}"
             sh "kubectl label namespace ${testNamespace} test=true"
@@ -177,7 +176,7 @@ def call(body) {
               giveRegistryAccessToNamespace (testNamespace, registrySecret)
             }
           }
-          // We're moving to Helm-only deployments. Use Helm to install a deployment to test against.
+          
           container ('helm') {
             sh "/helm init --client-only --skip-refresh"
             def deployCommand = "/helm install ${realChartFolder} --wait --set test=true --values pipeline.yaml --namespace ${testNamespace} --name ${tempHelmRelease}"
