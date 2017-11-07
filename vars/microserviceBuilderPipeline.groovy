@@ -168,8 +168,8 @@ def call(body) {
           testNamespace = "testns-${env.BUILD_ID}-" + UUID.randomUUID()
           print "testing against namespace " + testNamespace
           String tempHelmRelease = (image + "-" + testNamespace)
-          // Name cannot end in '-'
-          while (tempHelmRelease.endsWith('-')) tempHelmRelease = tempHelmRelease.substring(0,tempHelmRelease.length()-1)
+          // Name cannot end in '-' or be longer than 53 chars
+          while (tempHelmRelease.endsWith('-') || tempHelmRelease.length() > 53) tempHelmRelease = tempHelmRelease.substring(0,tempHelmRelease.length()-1)
           container ('kubectl') {
             sh "kubectl create namespace ${testNamespace}"
             sh "kubectl label namespace ${testNamespace} test=true"
