@@ -72,6 +72,7 @@ def call(body) {
   def libertyLicenseJarBaseUrl = (System.getenv("LIBERTY_LICENSE_JAR_BASE_URL") ?: "").trim()
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (System.getenv("LIBERTY_LICENSE_JAR_NAME") ?: "").trim()
   def alwaysPullImage = (System.getenv("ALWAYS_PULL_IMAGE") == null) ? true : System.getenv("ALWAYS_PULL_IMAGE").toBoolean()
+  def mavenSettingsConfigMap = System.getenv("MAVEN_SETTINGS_CONFIG_MAP")?.trim() 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} deployBranch=${deployBranch} test=${test} debug=${debug} namespace=${namespace} \
@@ -84,6 +85,9 @@ def call(body) {
   def volumes = [ hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock') ]
   if (registrySecret) {
     volumes += secretVolume(secretName: registrySecret, mountPath: '/msb_reg_sec')
+  }
+  if (mavenSettingsConfigMap) {
+    volumes += configMapVolume(configMapName: mavenSettingsConfigMap, mountPath: '/msb_mvn_cfg')
   }
   print "microserviceBuilderPipeline: volumes = ${volumes}"
 
@@ -115,7 +119,12 @@ def call(body) {
         if (fileExists('pom.xml')) {
           stage ('Maven Build') {
             container ('maven') {
-              sh "mvn -B ${mvnCommands}"
+              def mvnCommand = "mvn -B"
+              if (mavenSettingsConfigMap) {
+                mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
+              }
+              mvnCommand += " ${mvnCommands}"
+              sh mvnCommand
             }
           }
         }
@@ -124,6 +133,13 @@ def call(body) {
             container ('docker') {
               imageTag = gitCommit
               def buildCommand = "docker build -t ${image}:${imageTag} "
+              buildCommand += "--label org.label-schema.schema-version=\"1.0\" "
+              def scmUrl = scm.getUserRemoteConfigs()[0].getUrl()
+              buildCommand += "--label org.label-schema.vcs-url=\"${scmUrl}\" "
+              buildCommand += "--label org.label-schema.vcs-ref=\"${gitCommit}\" "  
+              buildCommand += "--label org.label-schema.name=\"${image}\" "
+              def buildDate = sh(returnStdout: true, script: "date -Iseconds").trim()
+              buildCommand += "--label org.label-schema.build-date=\"${buildDate}\" "
               if (alwaysPullImage) {
                 buildCommand += " --pull=true "
               }
@@ -189,7 +205,12 @@ def call(body) {
 
           container ('maven') {
             try {
-              sh "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false verify"
+              def mvnCommand = "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
+              if (mavenSettingsConfigMap) {
+                mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
+              }
+              mvnCommand += " verify"
+              sh mvnCommand
             } finally {
               step([$class: 'JUnitResultArchiver', allowEmptyResults: true, testResults: '**/target/failsafe-reports/*.xml'])
               step([$class: 'ArtifactArchiver', artifacts: '**/target/failsafe-reports/*.txt', allowEmptyArchive: true])
