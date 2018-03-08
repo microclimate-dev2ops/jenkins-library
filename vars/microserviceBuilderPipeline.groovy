@@ -1,5 +1,5 @@
 #!groovy
-// Copyright (c) IBM 2017
+// Copyright (c) IBM 2017,2018
 
 /*------------------------
   Typical usage:
@@ -54,25 +54,25 @@ def call(body) {
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'ibmcom/k8s-helm:v2.6.0' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
-  def registry = System.getenv("REGISTRY").trim()
+  def registry = (env.REGISTRY ?: "").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
-  def registrySecret = System.getenv("REGISTRY_SECRET").trim()
-  def build = (config.build ?: System.getenv ("BUILD")).toBoolean()
-  def deploy = (config.deploy ?: System.getenv ("DEPLOY")).toBoolean()
-  def namespace = config.namespace ?: (System.getenv("NAMESPACE") ?: "").trim()
+  def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
+  def build = (config.build ?: env.BUILD ?: "true").toBoolean()
+  def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
+  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
-  def test = (config.test ?: (System.getenv ("TEST") ?: "false").trim()).toLowerCase() == 'true'
-  def debug = (config.debug ?: (System.getenv ("DEBUG") ?: "false").trim()).toLowerCase() == 'true'
-  def deployBranch = config.deployBranch ?: ((System.getenv("DEFAULT_DEPLOY_BRANCH") ?: "").trim() ?: 'master')
+  def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
+  def debug = (config.debug ?: (env.DEBUG ?: "false").trim()).toLowerCase() == 'true'
+  def deployBranch = config.deployBranch ?: ((env.DEFAULT_DEPLOY_BRANCH ?: "").trim() ?: 'master')
   // will need to check later if user provided chartFolder location
   def userSpecifiedChartFolder = config.chartFolder
-  def chartFolder = userSpecifiedChartFolder ?: ((System.getenv("CHART_FOLDER") ?: "").trim() ?: 'chart')
-  def manifestFolder = config.manifestFolder ?: ((System.getenv("MANIFEST_FOLDER") ?: "").trim() ?: 'manifests')
-  def libertyLicenseJarBaseUrl = (System.getenv("LIBERTY_LICENSE_JAR_BASE_URL") ?: "").trim()
-  def libertyLicenseJarName = config.libertyLicenseJarName ?: (System.getenv("LIBERTY_LICENSE_JAR_NAME") ?: "").trim()
-  def alwaysPullImage = (System.getenv("ALWAYS_PULL_IMAGE") == null) ? true : System.getenv("ALWAYS_PULL_IMAGE").toBoolean()
-  def mavenSettingsConfigMap = System.getenv("MAVEN_SETTINGS_CONFIG_MAP")?.trim() 
+  def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
+  def manifestFolder = config.manifestFolder ?: ((env.MANIFEST_FOLDER ?: "").trim() ?: 'manifests')
+  def libertyLicenseJarBaseUrl = (env.LIBERTY_LICENSE_JAR_BASE_URL ?: "").trim()
+  def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
+  def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
+  def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim() 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} deployBranch=${deployBranch} test=${test} debug=${debug} namespace=${namespace} \
