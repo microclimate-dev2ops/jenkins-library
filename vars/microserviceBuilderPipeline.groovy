@@ -23,7 +23,6 @@
     deploy = 'true' - any value other than 'true' == false
     test = 'true' - `mvn verify` is run if this value is `true` and a pom.xml exists
     debug = 'false' - namespaces created during tests are deleted unless this value is set to 'true'
-    deployBranch = 'master' - only builds from this branch are deployed
     chartFolder = 'chart' - folder containing helm deployment chart
     manifestFolder = 'manifests' - folder containing kubectl deployment manifests
     namespace = 'targetNamespace' - deploys into Kubernetes targetNamespace.
@@ -64,7 +63,6 @@ def call(body) {
   // these options were all added later. Helm chart may not have the associated properties set.
   def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
   def debug = (config.debug ?: (env.DEBUG ?: "false").trim()).toLowerCase() == 'true'
-  def deployBranch = config.deployBranch ?: ((env.DEFAULT_DEPLOY_BRANCH ?: "").trim() ?: 'master')
   // will need to check later if user provided chartFolder location
   def userSpecifiedChartFolder = config.chartFolder
   def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
@@ -75,7 +73,7 @@ def call(body) {
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim() 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
-  deploy=${deploy} deployBranch=${deployBranch} test=${test} debug=${debug} namespace=${namespace} \
+  deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
@@ -229,13 +227,25 @@ def call(body) {
         }
       }
 
-      if (deploy && env.BRANCH_NAME == deployBranch) {
+      if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
           deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder)
         }
       }
     }
   }
+}
+
+def getDeployBranch () {
+  def deployBranch
+  container ('kubectl') {
+    def array = env.JOB_NAME.split("/")
+    def projectNamespace = array[0]
+    def projectName = array[1]
+    deployBranch = sh returnStdout: true, script: "kubectl get project ${projectName} --namespace=${projectNamespace} -o go-template='{{.spec.deployBranch}}'"
+    print "Deploy branch for project ${projectName} in namespace ${projectNamespace} is ${deployBranch}"
+  }
+  return deployBranch
 }
 
 def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder) {
