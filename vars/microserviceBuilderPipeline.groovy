@@ -244,7 +244,7 @@ def call(body) {
             initalizeHelm (tillerNamespace)
             helmInitialized = true
           }
-          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder)
+          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret)
         }
       }
     }
@@ -273,14 +273,17 @@ def initalizeHelm (String tillerNamespace) {
   }
 }
 
-def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder) {
+def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret) {
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
       def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
       if (fileExists("chart/overrides.yaml")) {
         deployCommand += " --values chart/overrides.yaml"
       }
-      if (namespace) deployCommand += " --namespace ${namespace}"
+      if (namespace) {
+        deployCommand += " --namespace ${namespace}"
+        createNamespace(namespace, registrySecret)   
+      }
       def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
       deployCommand += " ${releaseName} ${chartFolder}"
       sh deployCommand
@@ -288,8 +291,26 @@ def deployProject (String chartFolder, String registry, String image, String ima
   } else if (fileExists(manifestFolder)) {
     container ('kubectl') {
       def deployCommand = "kubectl apply -f ${manifestFolder}"
-      if (namespace) deployCommand += " --namespace ${namespace}"
+      if (namespace) {
+        createNamespace(namespace, registrySecret)
+        deployCommand += " --namespace ${namespace}"
+      }
       sh deployCommand
+    }
+  }
+}
+
+/*
+  Create target namespace and give access to regsitry
+*/
+def createNamespace(String namespace, String registrySecret) {
+  container ('kubectl') {
+    ns_exists = sh(returnStatus: true, script: "kubectl get namespace ${namespace}")
+    if (ns_exists != 0) {
+      sh "kubectl create namespace ${namespace}"
+      if (registrySecret) {
+        giveRegistryAccessToNamespace (namespace, registrySecret)
+      }
     }
   }
 }
