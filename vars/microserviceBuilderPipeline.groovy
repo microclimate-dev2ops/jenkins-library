@@ -12,9 +12,9 @@
   These are the names of images to be downloaded from https://hub.docker.com/.
 
     mavenImage = 'maven:3.5.2-jdk-8'
-    dockerImage = 'docker'
+    dockerImage = 'ibmcom/docker:17.10'
     kubectlImage = 'ibmcom/k8s-kubectl:v1.8.3'
-    helmImage = 'ibmcom/k8s-helm:v2.6.0'
+    helmImage = 'lachlanevenson/k8s-helm:v2.7.2'
 
   You can also specify:
 
@@ -51,7 +51,7 @@ def call(body) {
   def maven = (config.mavenImage == null) ? 'maven:3.5.2-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
-  def helm = (config.helmImage == null) ? 'ibmcom/k8s-helm:v2.6.0' : config.helmImage
+  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.7.2' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
   def registry = (env.REGISTRY ?: "").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
@@ -59,6 +59,7 @@ def call(body) {
   def build = (config.build ?: env.BUILD ?: "true").toBoolean()
   def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
   def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
+  def tillerNamespace = (env.TILLER_NAMESPACE ?: "default").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
   def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
@@ -73,7 +74,7 @@ def call(body) {
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim() 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
-  deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
+  deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
@@ -99,7 +100,10 @@ def call(body) {
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
-      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat',
+        envVars: [
+          containerEnvVar(key: 'TILLER_NAMESPACE', value: tillerNamespace)
+        ]),
     ],
     volumes: volumes
   ) {
@@ -113,6 +117,7 @@ def call(body) {
       }
 
       def imageTag = null
+      def helmInitialized = false // Lazily initialize Helm but only once
       if (build) {
         if (fileExists('pom.xml')) {
           stage ('Maven Build') {
@@ -153,6 +158,8 @@ def call(body) {
               buildCommand += " ."
               if (registrySecret) {
                 sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
+                sh "mkdir /home/jenkins/.docker"
+                sh "ln -s /msb_reg_sec/.dockerconfigjson /home/jenkins/.docker/config.json"
               }
               sh buildCommand
               if (registry) {
@@ -191,10 +198,14 @@ def call(body) {
               giveRegistryAccessToNamespace (testNamespace, registrySecret)
             }
           }
+
+          if (!helmInitialized) {
+            initalizeHelm (tillerNamespace)
+            helmInitialized = true
+          }
           
           container ('helm') {
-            sh "/helm init --client-only --skip-refresh"
-            def deployCommand = "/helm install ${realChartFolder} --wait --set test=true --values pipeline.yaml --namespace ${testNamespace} --name ${tempHelmRelease}"
+            def deployCommand = "helm install ${realChartFolder} --wait --set test=true --values pipeline.yaml --namespace ${testNamespace} --name ${tempHelmRelease}"
             if (fileExists("chart/overrides.yaml")) {
               deployCommand += " --values chart/overrides.yaml"
             }
@@ -217,7 +228,7 @@ def call(body) {
                   sh "kubectl delete namespace ${testNamespace}"
                   if (fileExists(realChartFolder)) {
                     container ('helm') {
-                      sh "/helm delete ${tempHelmRelease} --purge"
+                      sh "helm delete ${tempHelmRelease} --purge"
                     }
                   }
                 }
@@ -229,6 +240,10 @@ def call(body) {
 
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
+          if (!helmInitialized) {
+            initalizeHelm (tillerNamespace)
+            helmInitialized = true
+          }
           deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder)
         }
       }
@@ -248,11 +263,20 @@ def getDeployBranch () {
   return deployBranch
 }
 
+def initalizeHelm (String tillerNamespace) {
+  container ('helm') {        
+    sh "helm init --skip-refresh"    
+  }
+  echo "Waiting until Tiller is running"
+  container ('kubectl') {
+    sh "kubectl rollout status deployment -n ${tillerNamespace} tiller-deploy" 
+  }
+}
+
 def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder) {
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
-      sh "/helm init --client-only --skip-refresh"
-      def deployCommand = "/helm upgrade --install --wait --values pipeline.yaml"
+      def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
       if (fileExists("chart/overrides.yaml")) {
         deployCommand += " --values chart/overrides.yaml"
       }
