@@ -200,6 +200,7 @@ def call(body) {
               sh buildCommand
               if (registry) {
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
+                sh "sleep 7200"
                 sh "docker push ${registry}${image}:${imageTag}"
               }
             }
