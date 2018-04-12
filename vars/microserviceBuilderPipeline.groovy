@@ -94,7 +94,7 @@ def call(body) {
   podTemplate(
     label: 'msbPod',
     inheritFrom: 'default',
-    serviceAccount: ${serviceAccountName},
+    serviceAccount: serviceAccountName,
     containers: [
       containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'docker', image: docker, command: 'cat', ttyEnabled: true,
