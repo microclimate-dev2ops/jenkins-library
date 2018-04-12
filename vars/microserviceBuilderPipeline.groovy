@@ -60,7 +60,7 @@ def call(body) {
   def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
   def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def tillerNamespace = (env.TILLER_NAMESPACE ?: "default").trim()
-  def serviceAccountName = (env.DEVOPS_SERVICE_ACCOUNT_NAME ?: "default").trim()
+  def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
   def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
