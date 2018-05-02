@@ -60,6 +60,7 @@ def call(body) {
   def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
   def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def tillerNamespace = (env.TILLER_NAMESPACE ?: "default").trim()
+  def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
   def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
@@ -72,10 +73,10 @@ def call(body) {
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
-
+  
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
-  chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage}"
+  chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
   // In that case we'll need the registrySecret to have been ported over, perhaps during pipeline install.
@@ -93,6 +94,7 @@ def call(body) {
   podTemplate(
     label: 'msbPod',
     inheritFrom: 'default',
+    serviceAccount: serviceAccountName,
     containers: [
       containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'docker', image: docker, command: 'cat', ttyEnabled: true,
