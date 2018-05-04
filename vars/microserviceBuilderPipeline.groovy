@@ -60,11 +60,11 @@ def call(body) {
   def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
   def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def tillerNamespace = (env.TILLER_NAMESPACE ?: "default").trim()
-  def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
   def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
   def debug = (config.debug ?: (env.DEBUG ?: "false").trim()).toLowerCase() == 'true'
+  def helmSecret = (env.HELM_SECRET ?: "").trim()
   // will need to check later if user provided chartFolder location
   def userSpecifiedChartFolder = config.chartFolder
   def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
@@ -73,10 +73,10 @@ def call(body) {
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
-  
+
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
-  chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
+  chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
   // In that case we'll need the registrySecret to have been ported over, perhaps during pipeline install.
@@ -89,12 +89,15 @@ def call(body) {
   if (mavenSettingsConfigMap) {
     volumes += configMapVolume(configMapName: mavenSettingsConfigMap, mountPath: '/msb_mvn_cfg')
   }
+  if (helmSecret) {
+    volumes += secretVolume(secretName: helmSecret, mountPath: '/msb_helm_sec')
+  }
   print "microserviceBuilderPipeline: volumes = ${volumes}"
+  print "microserviceBuilderPipeline: helmSecret: ${helmSecret}"
 
   podTemplate(
     label: 'msbPod',
     inheritFrom: 'default',
-    serviceAccount: serviceAccountName,
     containers: [
       containerTemplate(name: 'maven', image: maven, ttyEnabled: true, command: 'cat'),
       containerTemplate(name: 'docker', image: docker, command: 'cat', ttyEnabled: true,
@@ -247,6 +250,10 @@ def call(body) {
             if (fileExists("chart/overrides.yaml")) {
               deployCommand += " --values chart/overrides.yaml"
             }
+	    if (helmSecret) {
+              echo "adding --tls"
+              deployCommand += " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key "
+            }
             sh deployCommand
           }
 
@@ -279,10 +286,10 @@ def call(body) {
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
           if (!helmInitialized) {
-            initalizeHelm (tillerNamespace)
+            initalizeHelm (tillerNamespace, helmSecret)
             helmInitialized = true
           }
-          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret)
+          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret, helmSecret)
         }
       }
     }
@@ -301,9 +308,14 @@ def getDeployBranch () {
   return deployBranch
 }
 
-def initalizeHelm (String tillerNamespace) {
-  container ('helm') {        
-    sh "helm init --skip-refresh"    
+def initalizeHelm (String tillerNamespace, String helmSecret) {
+  container ('helm') {
+    def options = ""
+    if (helmSecret) {
+       echo "initializing with --client only"
+       options += "--client-only "
+    }
+    sh "helm init --skip-refresh ${options}"     
   }
   echo "Waiting until Tiller is running"
   container ('kubectl') {
@@ -311,7 +323,7 @@ def initalizeHelm (String tillerNamespace) {
   }
 }
 
-def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret) {
+def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret, String helmSecret) {
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
       def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
@@ -321,6 +333,10 @@ def deployProject (String chartFolder, String registry, String image, String ima
       if (namespace) {
         deployCommand += " --namespace ${namespace}"
         createNamespace(namespace, registrySecret)   
+      }
+      if (helmSecret) {
+        echo "adding --tls"
+        deployCommand += " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key "
       }
       def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
       deployCommand += " ${releaseName} ${chartFolder}"
