@@ -37,8 +37,6 @@ import java.util.UUID
 import groovy.json.JsonOutput;
 import groovy.json.JsonSlurperClassic;
 
-helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key " 
-
 def call(body) {
   def config = [:]
   // Parameter expansion works after the call to body() below.
@@ -76,6 +74,7 @@ def call(body) {
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
+  def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key " 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
@@ -298,7 +297,7 @@ def call(body) {
             initalizeHelm (tillerNamespace, helmSecret)
             helmInitialized = true
           }
-          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret, helmSecret)
+          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret, helmSecret, helmTlsOptions)
         }
       }
     }
@@ -332,7 +331,7 @@ def initalizeHelm (String tillerNamespace, String helmSecret) {
   }
 }
 
-def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret, String helmSecret) {
+def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret, String helmSecret, String helmTlsOptions) {
   if (chartFolder != null && fileExists(chartFolder)) {
     container ('helm') {
       def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
