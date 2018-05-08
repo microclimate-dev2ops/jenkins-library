@@ -37,6 +37,8 @@ import java.util.UUID
 import groovy.json.JsonOutput;
 import groovy.json.JsonSlurperClassic;
 
+helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key " 
+
 def call(body) {
   def config = [:]
   // Parameter expansion works after the call to body() below.
@@ -74,7 +76,6 @@ def call(body) {
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
-  def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key " 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
@@ -255,7 +256,7 @@ def call(body) {
             }
 	    if (helmSecret) {
               echo "adding --tls"
-              deployCommand += "${helmTlsOptions}"
+              deployCommand += helmTlsOptions
             }
             sh deployCommand
           }
@@ -279,7 +280,7 @@ def call(body) {
                       def deleteCommand = "helm delete ${tempHelmRelease} --purge"
                       if (helmSecret) {
                         echo "adding --tls"
-                        deleteCommand += "${helmTlsOptions}"
+                        deleteCommand += helmTlsOptions
                       }
 		      sh deleteCommand
                     }
@@ -344,7 +345,7 @@ def deployProject (String chartFolder, String registry, String image, String ima
       }
       if (helmSecret) {
         echo "adding --tls"
-        deployCommand += "${helmTlsOptions}"
+        deployCommand += helmTlsOptions
       }
       def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
       deployCommand += " ${releaseName} ${chartFolder}"
