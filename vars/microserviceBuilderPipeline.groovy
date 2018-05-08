@@ -243,7 +243,7 @@ def call(body) {
           }
 
           if (!helmInitialized) {
-            initalizeHelm (tillerNamespace)
+            initalizeHelm (tillerNamespace, helmSecret)
             helmInitialized = true
           }
           
