@@ -275,7 +275,11 @@ def call(body) {
                   sh "kubectl delete namespace ${testNamespace}"
                   if (fileExists(realChartFolder)) {
                     container ('helm') {
-                      sh "helm delete ${tempHelmRelease} --purge"
+                      def deleteCommand = "helm delete ${tempHelmRelease} --purge"
+                      if (helmSecret) {
+                        deleteCommand +=  " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key "
+                      }
+		      sh deleteCommand
                     }
                   }
                 }
