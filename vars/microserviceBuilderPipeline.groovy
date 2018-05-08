@@ -255,7 +255,7 @@ def call(body) {
             }
 	    if (helmSecret) {
               echo "adding --tls"
-              deployCommand += ${helmTlsOptions}
+              deployCommand += helmTlsOptions
             }
             sh deployCommand
           }
@@ -279,7 +279,7 @@ def call(body) {
                       def deleteCommand = "helm delete ${tempHelmRelease} --purge"
                       if (helmSecret) {
                         echo "adding --tls"
-                        deleteCommand += ${helmTlsOptions}
+                        deleteCommand += helmTlsOptions
                       }
 		      sh deleteCommand
                     }
@@ -344,7 +344,7 @@ def deployProject (String chartFolder, String registry, String image, String ima
       }
       if (helmSecret) {
         echo "adding --tls"
-        deployCommand += ${helmTlsOptions}
+        deployCommand += helmTlsOptions
       }
       def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
       deployCommand += " ${releaseName} ${chartFolder}"
