@@ -74,6 +74,7 @@ def call(body) {
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
+  def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key " 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
@@ -254,7 +255,7 @@ def call(body) {
             }
 	    if (helmSecret) {
               echo "adding --tls"
-              deployCommand += " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key "
+              deployCommand += ${helmTlsOptions}
             }
             sh deployCommand
           }
@@ -277,7 +278,8 @@ def call(body) {
                     container ('helm') {
                       def deleteCommand = "helm delete ${tempHelmRelease} --purge"
                       if (helmSecret) {
-                        deleteCommand +=  " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key "
+                        echo "adding --tls"
+                        deleteCommand += ${helmTlsOptions}
                       }
 		      sh deleteCommand
                     }
@@ -342,7 +344,7 @@ def deployProject (String chartFolder, String registry, String image, String ima
       }
       if (helmSecret) {
         echo "adding --tls"
-        deployCommand += " --tls --tls-ca-cert=/msb_helm_sec/ca.crt --tls-cert=/msb_helm_sec/tls.crt --tls-key=/msb_helm_sec/tls.key "
+        deployCommand += ${helmTlsOptions}
       }
       def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
       deployCommand += " ${releaseName} ${chartFolder}"
