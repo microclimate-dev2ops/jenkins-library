@@ -274,6 +274,10 @@ def call(body) {
         }
       }
 
+      String result="registry=${registry}\\nimage=${image}\\nimageTag=${imageTag}"
+      sh "echo '${result}' > buildData.txt"
+      archiveArtifacts 'buildData.txt'
+
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
           if (!helmInitialized) {
