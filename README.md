@@ -7,9 +7,9 @@ Setting the secret name into HELM_SECRET environment variable enables tls option
 
 The secret should have:
 
-> cert-pem: certificate
-> key-pem: certificate key
-> ca-pam: CA certificate.
+> cert.pem: certificate
+> key.pem: certificate key
+> ca.pam: CA certificate.
 
 Sample secret creation command:
 
