@@ -200,7 +200,6 @@ def call(body) {
               sh buildCommand
               if (registry) {
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
-                sh "sleep 7200"
                 sh "docker push ${registry}${image}:${imageTag}"
               }
             }
@@ -274,6 +273,10 @@ def call(body) {
           }
         }
       }
+
+      String result="registry=${registry}\\nimage=${image}\\nimageTag=${imageTag}"
+      sh "echo '${result}' > buildData.txt"
+      archiveArtifacts 'buildData.txt'
 
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
