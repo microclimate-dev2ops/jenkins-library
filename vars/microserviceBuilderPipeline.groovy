@@ -318,12 +318,7 @@ def getDeployBranch () {
 
 def initalizeHelm (String tillerNamespace, String helmSecret) {
   container ('helm') {
-    def options = ""
-    if (helmSecret) {
-       echo "initializing with --client only"
-       options += "--client-only "
-    }
-    sh "helm init --skip-refresh ${options}"     
+    sh "helm init --skip-refresh --client-only"     
   }
   echo "Waiting until Tiller is running"
   container ('kubectl') {
