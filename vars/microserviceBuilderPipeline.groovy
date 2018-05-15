@@ -59,7 +59,6 @@ def call(body) {
   def build = (config.build ?: env.BUILD ?: "true").toBoolean()
   def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
   def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
-  def tillerNamespace = (env.TILLER_NAMESPACE ?: "default").trim()
   def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
 
   // these options were all added later. Helm chart may not have the associated properties set.
@@ -77,7 +76,7 @@ def call(body) {
   def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
-  deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} tillerNamespace=${tillerNamespace} \
+  deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
@@ -108,10 +107,7 @@ def call(body) {
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
-      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat',
-        envVars: [
-          containerEnvVar(key: 'TILLER_NAMESPACE', value: tillerNamespace)
-        ]),
+      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
     ],
     volumes: volumes
   ) {
@@ -244,7 +240,7 @@ def call(body) {
           }
 
           if (!helmInitialized) {
-            initalizeHelm (tillerNamespace, helmSecret)
+            initalizeHelm ()
             helmInitialized = true
           }
           
@@ -294,7 +290,7 @@ def call(body) {
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
           if (!helmInitialized) {
-            initalizeHelm (tillerNamespace, helmSecret)
+            initalizeHelm ()
             helmInitialized = true
           }
           deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret, helmSecret, helmTlsOptions)
@@ -316,13 +312,9 @@ def getDeployBranch () {
   return deployBranch
 }
 
-def initalizeHelm (String tillerNamespace, String helmSecret) {
+def initalizeHelm () {
   container ('helm') {
     sh "helm init --skip-refresh --client-only"     
-  }
-  echo "Waiting until Tiller is running"
-  container ('kubectl') {
-    sh "kubectl rollout status deployment -n ${tillerNamespace} tiller-deploy" 
   }
 }
 
