@@ -1,2 +1,3 @@
 # microservicebuilder.lib
-A tool for enabling Jenkins builds in Microservice Builder
+
+A tool for enabling Jenkins builds in Microclimate.
