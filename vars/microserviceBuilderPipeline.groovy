@@ -290,7 +290,7 @@ def call(body) {
       }
 
       def result="commitID=${gitCommit}\\n" + 
-	         "commitMessage=${gitCommitMessage} \\n" + 
+	         "commitMessage=${gitCommitMessage}\\n" + 
 	         "registry=${registry}\\n" + 
 	         "image=${image}\\n" + 
 	         "imageTag=${imageTag}"
