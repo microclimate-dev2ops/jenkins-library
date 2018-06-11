@@ -113,10 +113,12 @@ def call(body) {
   ) {
     node('msbPod') {
       def gitCommit
+      def gitCommitMessage
 
       stage ('Extract') {
         checkout scm
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
         echo "checked out git commit ${gitCommit}"
       }
 
@@ -286,6 +288,15 @@ def call(body) {
           }
         }
       }
+
+      def result="commitID=${gitCommit}\\n" + 
+	         "commitMessage=${gitCommitMessage}\\n" + 
+	         "registry=${registry}\\n" + 
+	         "image=${image}\\n" + 
+	         "imageTag=${imageTag}"
+	    
+      sh "echo '${result}' > buildData.txt"
+      archiveArtifacts 'buildData.txt'
 
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
