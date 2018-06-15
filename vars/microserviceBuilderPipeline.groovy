@@ -298,9 +298,7 @@ def call(body) {
       sh "echo '${result}' > buildData.txt"
       archiveArtifacts 'buildData.txt'
 
-      // No deploy branch, want to deploy? Go ahead (we're in a straight-through scenario)
-      // Or if there's a deploy branch set and we're on it, go ahead and deploy that.
-      if (deploy && (getDeployBranch() == "" || env.BRANCH_NAME == getDeployBranch())) {
+      if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
           if (!helmInitialized) {
             initalizeHelm ()
