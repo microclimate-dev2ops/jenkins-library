@@ -114,9 +114,11 @@ def call(body) {
     node('msbPod') {
       def gitCommit
       def gitCommitMessage
+      def fullCommitID
 
       stage ('Extract') {
         checkout scm
+	fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
         echo "checked out git commit ${gitCommit}"
@@ -290,6 +292,7 @@ def call(body) {
       }
 
       def result="commitID=${gitCommit}\\n" + 
+	         "fullCommit=${fullCommitID}\\n" +
 	         "commitMessage=${gitCommitMessage}\\n" + 
 	         "registry=${registry}\\n" + 
 	         "image=${image}\\n" + 
