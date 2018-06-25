@@ -213,7 +213,17 @@ def call(body) {
             }
           }
         }
-      }
+      }	    
+
+      def result="commitID=${gitCommit}\\n" + 
+	         "fullCommit=${fullCommitID}\\n" +
+	         "commitMessage=${gitCommitMessage}\\n" + 
+	         "registry=${registry}\\n" + 
+	         "image=${image}\\n" + 
+	         "imageTag=${imageTag}"
+	    
+      sh "echo '${result}' > buildData.txt"
+      archiveArtifacts 'buildData.txt'
 
       def realChartFolder = null
       if (fileExists(chartFolder)) {
@@ -290,16 +300,6 @@ def call(body) {
           }
         }
       }
-
-      def result="commitID=${gitCommit}\\n" + 
-	         "fullCommit=${fullCommitID}\\n" +
-	         "commitMessage=${gitCommitMessage}\\n" + 
-	         "registry=${registry}\\n" + 
-	         "image=${image}\\n" + 
-	         "imageTag=${imageTag}"
-	    
-      sh "echo '${result}' > buildData.txt"
-      archiveArtifacts 'buildData.txt'
 
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
