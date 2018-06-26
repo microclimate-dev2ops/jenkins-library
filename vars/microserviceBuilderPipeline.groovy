@@ -124,8 +124,10 @@ def call(body) {
         echo "checked out git commit ${gitCommit}"
       }
 
+      
       def imageTag = null
       def helmInitialized = false // Lazily initialize Helm but only once
+      def dockerPushed = false // Only create an artifact containing build info if docker push succeeds
       if (build) {
         if (fileExists('pom.xml')) {
           stage ('Maven Build') {
@@ -208,22 +210,24 @@ def call(body) {
               sh buildCommand
               if (registry) {
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
-                sh "docker push ${registry}${image}:${imageTag}"
+                dockerPushed = sh(returnStatus: true, script: "docker push ${registry}${image}:${imageTag}")
               }
             }
           }
         }
       }	    
 
-      def result="commitID=${gitCommit}\\n" + 
-	         "fullCommit=${fullCommitID}\\n" +
-	         "commitMessage=${gitCommitMessage}\\n" + 
-	         "registry=${registry}\\n" + 
-	         "image=${image}\\n" + 
-	         "imageTag=${imageTag}"
-	    
-      sh "echo '${result}' > buildData.txt"
-      archiveArtifacts 'buildData.txt'
+      if (dockerPushed) {
+	print "Pushed the built image to the Docker registry successfully, creating the artifact"
+        def archiveContents="commitID=${gitCommit}\\n" + 
+          "fullCommit=${fullCommitID}\\n" +
+	  "commitMessage=${gitCommitMessage}\\n" + 
+	  "registry=${registry}\\n" + 
+	  "image=${image}\\n" + 
+	  "imageTag=${imageTag}"
+        sh "echo '${archiveContents}' > buildData.txt"
+        archiveArtifacts 'buildData.txt'
+      }
 
       def realChartFolder = null
       if (fileExists(chartFolder)) {
