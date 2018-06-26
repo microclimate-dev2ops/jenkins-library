@@ -211,13 +211,15 @@ def call(body) {
               if (registry) {
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
                 dockerPushed = sh(returnStatus: true, script: "docker push ${registry}${image}:${imageTag}")
+		print "Status code from Docker push: ${dockerPushed}"
               }
             }
           }
         }
       }	    
 
-      if (dockerPushed) {
+      // 0 for true: we got the return code and a straight if (dockerPushed) doesn't evaluate to true
+      if (dockerPushed == 0) {
 	print "Pushed the built image to the Docker registry successfully, creating the artifact"
         def archiveContents="commitID=${gitCommit}\\n" + 
           "fullCommit=${fullCommitID}\\n" +
