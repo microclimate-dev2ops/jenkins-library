@@ -229,6 +229,11 @@ def call(body) {
 	  "imageTag=${imageTag}"
         sh "echo '${archiveContents}' > buildData.txt"
         archiveArtifacts 'buildData.txt'
+      } else {
+        // If we don't do this, the Jenkins job can be marked as a success even though the push failed!
+	// This is because we capture the return code in a variable, see
+	// https://stackoverflow.com/questions/42428871/jenkins-pipeline-bubble-up-the-shell-exit-code-to-fail-the-stage
+	error "Didn't docker push successfully so failing this Jenkins build"	
       }
 
       def realChartFolder = null
