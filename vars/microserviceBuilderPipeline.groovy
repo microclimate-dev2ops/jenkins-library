@@ -127,7 +127,7 @@ def call(body) {
       
       def imageTag = null
       def helmInitialized = false // Lazily initialize Helm but only once
-      def dockerPushed = false // Only create an artifact containing build info if docker push succeeds
+      def dockerPushed = 1 // This is a return code: only create an artifact containing build info if the docker push succeeds
       if (build) {
         if (fileExists('pom.xml')) {
           stage ('Maven Build') {
@@ -218,7 +218,7 @@ def call(body) {
         }
       }	    
 
-      // 0 for true: we got the return code and a straight if (dockerPushed) doesn't evaluate to true
+      // Pushed ok? Go ahead and create the artifact
       if (dockerPushed == 0) {
 	print "Pushed the built image to the Docker registry successfully, creating the artifact"
         def archiveContents="commitID=${gitCommit}\\n" + 
@@ -230,9 +230,8 @@ def call(body) {
         sh "echo '${archiveContents}' > buildData.txt"
         archiveArtifacts 'buildData.txt'
       } else {
-        // If we don't do this, the Jenkins job can be marked as a success even though the push failed!
-	// This is because we capture the return code in a variable, see
-	// https://stackoverflow.com/questions/42428871/jenkins-pipeline-bubble-up-the-shell-exit-code-to-fail-the-stage
+	// Manually fail the build: if we don't do this, the Jenkins job can be marked as a success even though the push failed!
+	// See https://stackoverflow.com/questions/42428871/jenkins-pipeline-bubble-up-the-shell-exit-code-to-fail-the-stage
 	error "Didn't docker push successfully so failing this Jenkins build"	
       }
 
