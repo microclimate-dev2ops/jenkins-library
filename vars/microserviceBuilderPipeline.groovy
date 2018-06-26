@@ -127,7 +127,6 @@ def call(body) {
       
       def imageTag = null
       def helmInitialized = false // Lazily initialize Helm but only once
-      def dockerPushed = 1 // This is a return code: only create an artifact containing build info if the docker push succeeds
       if (build) {
         if (fileExists('pom.xml')) {
           stage ('Maven Build') {
@@ -210,29 +209,22 @@ def call(body) {
               sh buildCommand
               if (registry) {
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
-                dockerPushed = sh(returnStatus: true, script: "docker push ${registry}${image}:${imageTag}")
-		print "Status code from Docker push: ${dockerPushed}"
+                sh("docker push ${registry}${image}:${imageTag}")
+		// Note that we can only get to this code if there are no errors above
+		// and we only get the image tag from being in this Docker container ste
+		print "Pushed the built image to the Docker registry successfully, creating the artifact"
+                def archiveContents="commitID=${gitCommit}\\n" + 
+                  "fullCommit=${fullCommitID}\\n" +
+	          "commitMessage=${gitCommitMessage}\\n" + 
+	          "registry=${registry}\\n" + 
+	           "image=${image}\\n" + 
+	           "imageTag=${imageTag}"
+                sh "echo '${archiveContents}' > buildData.txt"
+                archiveArtifacts 'buildData.txt'
               }
             }
           }
         }
-      }	    
-
-      // Pushed ok? Go ahead and create the artifact
-      if (dockerPushed == 0) {
-	print "Pushed the built image to the Docker registry successfully, creating the artifact"
-        def archiveContents="commitID=${gitCommit}\\n" + 
-          "fullCommit=${fullCommitID}\\n" +
-	  "commitMessage=${gitCommitMessage}\\n" + 
-	  "registry=${registry}\\n" + 
-	  "image=${image}\\n" + 
-	  "imageTag=${imageTag}"
-        sh "echo '${archiveContents}' > buildData.txt"
-        archiveArtifacts 'buildData.txt'
-      } else {
-	// Manually fail the build: if we don't do this, the Jenkins job can be marked as a success even though the push failed!
-	// See https://stackoverflow.com/questions/42428871/jenkins-pipeline-bubble-up-the-shell-exit-code-to-fail-the-stage
-	error "Didn't docker push successfully so failing this Jenkins build"	
       }
 
       def realChartFolder = null
