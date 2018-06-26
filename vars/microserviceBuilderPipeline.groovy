@@ -124,6 +124,7 @@ def call(body) {
         echo "checked out git commit ${gitCommit}"
       }
 
+      
       def imageTag = null
       def helmInitialized = false // Lazily initialize Helm but only once
       if (build) {
@@ -208,7 +209,18 @@ def call(body) {
               sh buildCommand
               if (registry) {
                 sh "docker tag ${image}:${imageTag} ${registry}${image}:${imageTag}"
-                sh "docker push ${registry}${image}:${imageTag}"
+                sh("docker push ${registry}${image}:${imageTag}")
+		// Note that we can only get to this code if there are no errors above
+		// and we only get the image tag from being in this Docker container ste
+		print "Pushed the built image to the Docker registry successfully, creating the artifact"
+                def archiveContents="commitID=${gitCommit}\\n" + 
+                  "fullCommit=${fullCommitID}\\n" +
+	          "commitMessage=${gitCommitMessage}\\n" + 
+	          "registry=${registry}\\n" + 
+	           "image=${image}\\n" + 
+	           "imageTag=${imageTag}"
+                sh "echo '${archiveContents}' > buildData.txt"
+                archiveArtifacts 'buildData.txt'
               }
             }
           }
@@ -290,16 +302,6 @@ def call(body) {
           }
         }
       }
-
-      def result="commitID=${gitCommit}\\n" + 
-	         "fullCommit=${fullCommitID}\\n" +
-	         "commitMessage=${gitCommitMessage}\\n" + 
-	         "registry=${registry}\\n" + 
-	         "image=${image}\\n" + 
-	         "imageTag=${imageTag}"
-	    
-      sh "echo '${result}' > buildData.txt"
-      archiveArtifacts 'buildData.txt'
 
       if (deploy && env.BRANCH_NAME == getDeployBranch()) {
         stage ('Deploy') {
