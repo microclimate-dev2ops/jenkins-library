@@ -74,10 +74,22 @@ def call(body) {
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
   def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
+  def mcReleaseName = (env.RELEASE_NAME).toUpperCase()
 
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
+	
+		
+  def jobName = (env.JOB_BASE_NAME)
+  // E.g. JOB_NAME=default/myproject/master
+  def jobNameSplit = env.JOB_NAME.split("/")	
+  def projectNamespace = jobNameSplit[0]
+  def projectName = jobNameSplit[1]
+  def branchName = jobNameSplit[2]
+	
+  def buildNumber = (env.BUILD_NUMBER).toInteger()
+  print "Thinking your build number is ${buildNumber}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
   // In that case we'll need the registrySecret to have been ported over, perhaps during pipeline install.
@@ -114,9 +126,16 @@ def call(body) {
     node('msbPod') {
       def gitCommit
       def gitCommitMessage
+      def fullCommitID
+	    	    
+      print "mcReleaseName=${mcReleaseName} projectNamespace=${projectNamespace} projectName=${projectName} branchName=${branchName}"
+      devopsHost = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_HOST", returnStdout: true).trim()	       
+      devopsPort = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_PORT", returnStdout: true).trim()	      
+      devopsEndpoint = "https://${devopsHost}:${devopsPort}"	 
 
       stage ('Extract') {
         checkout scm
+	fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
         echo "checked out git commit ${gitCommit}"
@@ -290,6 +309,7 @@ def call(body) {
       }
 
       def result="commitID=${gitCommit}\\n" + 
+	         "fullCommit=${fullCommitID}\\n" +
 	         "commitMessage=${gitCommitMessage}\\n" + 
 	         "registry=${registry}\\n" + 
 	         "image=${image}\\n" + 
@@ -297,30 +317,46 @@ def call(body) {
 	    
       sh "echo '${result}' > buildData.txt"
       archiveArtifacts 'buildData.txt'
-
-      if (deploy && env.BRANCH_NAME == getDeployBranch()) {
-        stage ('Deploy') {
-          if (!helmInitialized) {
-            initalizeHelm ()
-            helmInitialized = true
-          }
-          deployProject (realChartFolder, registry, image, imageTag, namespace, manifestFolder, registrySecret, helmSecret, helmTlsOptions)
+	
+      if (deploy) {
+        if (!helmInitialized) {
+          initalizeHelm ()
+          helmInitialized = true
         }
+        notifyDevops(gitCommit, fullCommitID, image, imageTag, 
+          branchName, "build", "", projectName, projectNamespace, "", "", env.BUILD_NUMBER.toInteger())
       }
     }
   }
 }
 
-def getDeployBranch () {
-  def deployBranch
-  container ('kubectl') {
-    def array = env.JOB_NAME.split("/")
-    def projectNamespace = array[0]
-    def projectName = array[1]
-    deployBranch = sh returnStdout: true, script: "kubectl get project ${projectName} --namespace=${projectNamespace} -o go-template='{{.spec.deployBranch}}'"
-    print "Deploy branch for project ${projectName} in namespace ${projectNamespace} is ${deployBranch}"
+def notifyDevops (String gitCommit, String fullCommitID, String image, 
+  String imageTag, String branchName, String triggerType, 
+  String clusterConfigSecret, String projectName, String projectNamespace, String targetNamespace, String status, Integer buildNumber) {
+	
+  notificationEndpoint="${devopsEndpoint}/v1/namespaces/${projectNamespace}/projects/${projectName}/notifications"	
+	
+  stage ('Notify Devops') {	  
+    print "Poking the notification API at ${notificationEndpoint}, parameters..."	
+
+    print "gitCommit: ${gitCommit}, fullCommitID: ${fullCommitID}, image: ${image} \
+      imageTag=${imageTag}, branchName=${branchName}, triggerType=${triggerType} \
+      clusterConfigSecret=${clusterConfigSecret}, status=${status}, buildNumber=${buildNumber}"
+
+    def notificationData = [
+      chart: [gitCommit: gitCommit, fullCommit: fullCommitID],
+      overrides: [image: [repository: image, tag: imageTag]],
+      trigger: [type: triggerType, branch: branchName],
+      clusterConfigSecret: clusterConfigSecret,
+      namespace: targetNamespace,
+      status: status,
+      buildNumber: buildNumber
+    ]
+
+    def payload = JsonOutput.toJson(notificationData)
+    notification = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d '${payload}' $notificationEndpoint" ].execute().text
+    print "Devops notification response: ${notification}"
   }
-  return deployBranch
 }
 
 def initalizeHelm () {
