@@ -87,9 +87,6 @@ def call(body) {
   def projectNamespace = jobNameSplit[0]
   def projectName = jobNameSplit[1]
   def branchName = jobNameSplit[2]
-	
-  def buildNumber = (env.BUILD_NUMBER).toInteger()
-  print "Thinking your build number is ${buildNumber}"
 
   // We won't be able to get hold of registrySecret if Jenkins is running in a non-default namespace that is not the deployment namespace.
   // In that case we'll need the registrySecret to have been ported over, perhaps during pipeline install.
