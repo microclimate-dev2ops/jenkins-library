@@ -128,13 +128,12 @@ def call(body) {
       print "mcReleaseName=${mcReleaseName} projectNamespace=${projectNamespace} projectName=${projectName} branchName=${branchName}"
       devopsHost = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_HOST", returnStdout: true).trim()	       
       devopsPort = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_PORT", returnStdout: true).trim()	      
-      devopsEndpoint = "https://${devopsHost}:${devopsPort}"	 
-
+      devopsEndpoint = "https://${devopsHost}:${devopsPort}"
       stage ('Extract') {
         checkout scm
-	fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+	      fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+	      gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
         echo "checked out git commit ${gitCommit}"
       }
 
