@@ -337,7 +337,7 @@ def notifyDevops (String gitCommit, String fullCommitID, String image,
 
     print "gitCommit=${gitCommit}, fullCommitID=${fullCommitID}, image: ${image} \
       imageTag=${imageTag}, branchName=${branchName}, triggerType=${triggerType} \
-      clusterConfigSecret=${clusterConfigSecret}, status=${status}, buildNumber=${buildNumber}"
+      buildNumber=${buildNumber}"
 
     def notificationData = [
       chart: [gitCommit: gitCommit, fullCommit: fullCommitID],
