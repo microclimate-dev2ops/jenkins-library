@@ -321,22 +321,21 @@ def call(body) {
           helmInitialized = true
         }
         notifyDevops(gitCommit, fullCommitID, image, imageTag, 
-          branchName, "build", "", projectName, projectNamespace, "", "", env.BUILD_NUMBER.toInteger())
+          branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger())
       }
     }
   }
 }
 
 def notifyDevops (String gitCommit, String fullCommitID, String image, 
-  String imageTag, String branchName, String triggerType, 
-  String clusterConfigSecret, String projectName, String projectNamespace, String targetNamespace, String status, Integer buildNumber) {
+  String imageTag, String branchName, String triggerType, String projectName, String projectNamespace, Integer buildNumber) {
 	
   notificationEndpoint="${devopsEndpoint}/v1/namespaces/${projectNamespace}/projects/${projectName}/notifications"	
 	
   stage ('Notify Devops') {	  
     print "Poking the notification API at ${notificationEndpoint}, parameters..."	
 
-    print "gitCommit: ${gitCommit}, fullCommitID: ${fullCommitID}, image: ${image} \
+    print "gitCommit=${gitCommit}, fullCommitID=${fullCommitID}, image: ${image} \
       imageTag=${imageTag}, branchName=${branchName}, triggerType=${triggerType} \
       clusterConfigSecret=${clusterConfigSecret}, status=${status}, buildNumber=${buildNumber}"
 
@@ -344,9 +343,9 @@ def notifyDevops (String gitCommit, String fullCommitID, String image,
       chart: [gitCommit: gitCommit, fullCommit: fullCommitID],
       overrides: [image: [repository: image, tag: imageTag]],
       trigger: [type: triggerType, branch: branchName],
-      clusterConfigSecret: clusterConfigSecret,
-      namespace: targetNamespace,
-      status: status,
+      clusterConfigSecret: "",
+      namespace: "",
+      status: "",
       buildNumber: buildNumber
     ]
 
