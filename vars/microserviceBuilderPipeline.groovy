@@ -79,8 +79,8 @@ def call(body) {
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
-	
-		
+
+
   def jobName = (env.JOB_BASE_NAME)
   // E.g. JOB_NAME=default/myproject/master
   def jobNameSplit = env.JOB_NAME.split("/")	
@@ -125,7 +125,7 @@ def call(body) {
       def previousCommit
       def gitCommitMessage
       def fullCommitID
-	    	    
+
       print "mcReleaseName=${mcReleaseName} projectNamespace=${projectNamespace} projectName=${projectName} branchName=${branchName}"
       devopsHost = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_HOST", returnStdout: true).trim()	       
       devopsPort = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_PORT", returnStdout: true).trim()	      
@@ -133,10 +133,10 @@ def call(body) {
 
       stage ('Extract') {
         checkout scm
-	      fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+        fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
         previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
-	      gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+        gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
 
         echo "checked out git commit ${gitCommit}"
       }
@@ -156,7 +156,7 @@ def call(body) {
             }
           }
         }
-        
+
         if (fileExists('Dockerfile')) {
           if (fileExists('Package.swift')) {          
             echo "Detected Swift project with a Dockerfile..."
@@ -273,7 +273,7 @@ def call(body) {
             if (fileExists("chart/overrides.yaml")) {
               deployCommand += " --values chart/overrides.yaml"
             }
-	    if (helmSecret) {
+            if (helmSecret) {
               echo "adding --tls"
               deployCommand += helmTlsOptions
             }
@@ -301,7 +301,7 @@ def call(body) {
                         echo "adding --tls"
                         deleteCommand += helmTlsOptions
                       }
-		      sh deleteCommand
+                      sh deleteCommand
                     }
                   }
                 }
@@ -312,15 +312,15 @@ def call(body) {
       }
 
       def result="commitID=${gitCommit}\\n" + 
-	         "fullCommit=${fullCommitID}\\n" +
-	         "commitMessage=${gitCommitMessage}\\n" + 
-	         "registry=${registry}\\n" + 
-	         "image=${image}\\n" + 
-	         "imageTag=${imageTag}"
-	    
+           "fullCommit=${fullCommitID}\\n" +
+           "commitMessage=${gitCommitMessage}\\n" + 
+           "registry=${registry}\\n" + 
+           "image=${image}\\n" + 
+           "imageTag=${imageTag}"
+      
       sh "echo '${result}' > buildData.txt"
       archiveArtifacts 'buildData.txt'
-	
+
       if (deploy) {
         if (!helmInitialized) {
           initalizeHelm ()
@@ -335,9 +335,9 @@ def call(body) {
 
 def notifyDevops (String gitCommit, String fullCommitID, String image, 
   String imageTag, String branchName, String triggerType, String projectName, String projectNamespace, Integer buildNumber) {
-	
+
   notificationEndpoint="${devopsEndpoint}/v1/namespaces/${projectNamespace}/projects/${projectName}/notifications"	
-	
+
   stage ('Notify Devops') {	  
     print "Poking the notification API at ${notificationEndpoint}, parameters..."	
 
