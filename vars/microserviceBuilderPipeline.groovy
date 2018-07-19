@@ -122,6 +122,7 @@ def call(body) {
   ) {
     node('microclimatePod') {
       def gitCommit
+      def previousCommit
       def gitCommitMessage
       def fullCommitID
 	    	    
@@ -132,9 +133,11 @@ def call(body) {
 
       stage ('Extract') {
         checkout scm
-	fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+	      fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+        previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+	      gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+
         echo "checked out git commit ${gitCommit}"
       }
 
@@ -202,7 +205,10 @@ def call(body) {
               def buildDate = sh(returnStdout: true, script: "date -Iseconds").trim()
               buildCommand += "--label org.label-schema.build-date=\"${buildDate}\" "
               if (alwaysPullImage) {
-                buildCommand += " --pull=true "
+                buildCommand += " --pull=true"
+              }
+              if (previousCommit) {
+                buildCommand += " --cache-from ${registry}${image}:${previousCommit}"
               }
               if (libertyLicenseJarBaseUrl) {
                 if (readFile('Dockerfile').contains('LICENSE_JAR_URL')) {
