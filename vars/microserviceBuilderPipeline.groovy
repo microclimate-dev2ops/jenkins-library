@@ -18,7 +18,7 @@
 
   You can also specify:
 
-    mvnCommands = 'clean package'
+    mvnCommands = 'package'
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
     test = 'true' - `mvn verify` is run if this value is `true` and a pom.xml exists
@@ -52,7 +52,7 @@ def call(body) {
   def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.7.2' : config.helmImage
-  def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
+  def mvnCommands = (config.mvnCommands == null) ? 'package' : config.mvnCommands
   def registry = (env.REGISTRY ?: "").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
   def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
