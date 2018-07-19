@@ -106,7 +106,7 @@ def call(body) {
   print "microserviceBuilderPipeline: helmSecret: ${helmSecret}"
 
   podTemplate(
-    label: 'msbPod',
+    label: 'microclimatePod',
     inheritFrom: 'default',
     serviceAccount: serviceAccountName,
     containers: [
@@ -120,7 +120,7 @@ def call(body) {
     ],
     volumes: volumes
   ) {
-    node('msbPod') {
+    node('microclimatePod') {
       def gitCommit
       def gitCommitMessage
       def fullCommitID
