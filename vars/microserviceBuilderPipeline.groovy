@@ -287,7 +287,6 @@ def call(body) {
               step([$class: 'ArtifactArchiver', artifacts: '**/target/failsafe-reports/*.txt', allowEmptyArchive: true])
               if (!debug) {
                 container ('kubectl') {
-                  sh "kubectl delete namespace ${testNamespace}"
                   if (fileExists(realChartFolder)) {
                     container ('helm') {
                       def deleteCommand = "helm delete ${tempHelmRelease} --purge"
@@ -298,7 +297,10 @@ def call(body) {
 		      sh deleteCommand
                     }
                   }
-                }
+		  // Intentionally do this as the final step in here so we can actually delete it
+                  // A namespace will not be removed if there's a Kube resource still active in there
+                  sh "kubectl delete namespace ${testNamespace}"
+                }                
               }
             }
           }
