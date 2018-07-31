@@ -322,7 +322,7 @@ def call(body) {
           initalizeHelm ()
           helmInitialized = true
         }
-        notifyDevops(gitCommit, fullCommitID, image, imageTag, 
+        notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
           branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger())
       }
     }
