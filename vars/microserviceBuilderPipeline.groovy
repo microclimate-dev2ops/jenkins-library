@@ -18,7 +18,7 @@
 
   You can also specify:
 
-    mvnCommands = 'clean package'
+    mvnCommands = 'package'
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
     test = 'true' - `mvn verify` is run if this value is `true` and a pom.xml exists
@@ -52,7 +52,7 @@ def call(body) {
   def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.7.2' : config.helmImage
-  def mvnCommands = (config.mvnCommands == null) ? 'clean package' : config.mvnCommands
+  def mvnCommands = (config.mvnCommands == null) ? 'package' : config.mvnCommands
   def registry = (env.REGISTRY ?: "").trim()
   if (registry && !registry.endsWith('/')) registry = "${registry}/"
   def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
@@ -79,8 +79,8 @@ def call(body) {
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
-	
-		
+
+
   def jobName = (env.JOB_BASE_NAME)
   // E.g. JOB_NAME=default/myproject/master
   def jobNameSplit = env.JOB_NAME.split("/")	
@@ -106,7 +106,7 @@ def call(body) {
   print "microserviceBuilderPipeline: helmSecret: ${helmSecret}"
 
   podTemplate(
-    label: 'msbPod',
+    label: 'microclimatePod',
     inheritFrom: 'default',
     serviceAccount: serviceAccountName,
     containers: [
@@ -120,11 +120,12 @@ def call(body) {
     ],
     volumes: volumes
   ) {
-    node('msbPod') {
+    node('microclimatePod') {
       def gitCommit
+      def previousCommit
       def gitCommitMessage
       def fullCommitID
-	    	    
+
       print "mcReleaseName=${mcReleaseName} projectNamespace=${projectNamespace} projectName=${projectName} branchName=${branchName}"
       devopsHost = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_HOST", returnStdout: true).trim()	       
       devopsPort = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_PORT", returnStdout: true).trim()	      
@@ -132,9 +133,11 @@ def call(body) {
 
       stage ('Extract') {
         checkout scm
-	fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+        fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+        previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+        gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+
         echo "checked out git commit ${gitCommit}"
       }
 
@@ -153,7 +156,7 @@ def call(body) {
             }
           }
         }
-        
+
         if (fileExists('Dockerfile')) {
           if (fileExists('Package.swift')) {          
             echo "Detected Swift project with a Dockerfile..."
@@ -202,7 +205,10 @@ def call(body) {
               def buildDate = sh(returnStdout: true, script: "date -Iseconds").trim()
               buildCommand += "--label org.label-schema.build-date=\"${buildDate}\" "
               if (alwaysPullImage) {
-                buildCommand += " --pull=true "
+                buildCommand += " --pull=true"
+              }
+              if (previousCommit) {
+                buildCommand += " --cache-from ${registry}${image}:${previousCommit}"
               }
               if (libertyLicenseJarBaseUrl) {
                 if (readFile('Dockerfile').contains('LICENSE_JAR_URL')) {
@@ -267,7 +273,7 @@ def call(body) {
             if (fileExists("chart/overrides.yaml")) {
               deployCommand += " --values chart/overrides.yaml"
             }
-	    if (helmSecret) {
+            if (helmSecret) {
               echo "adding --tls"
               deployCommand += helmTlsOptions
             }
@@ -294,7 +300,7 @@ def call(body) {
                         echo "adding --tls"
                         deleteCommand += helmTlsOptions
                       }
-		      sh deleteCommand
+                      sh deleteCommand
                     }
                   }
 		  // Intentionally do this as the final step in here so we can actually delete it
@@ -308,15 +314,15 @@ def call(body) {
       }
 
       def result="commitID=${gitCommit}\\n" + 
-	         "fullCommit=${fullCommitID}\\n" +
-	         "commitMessage=${gitCommitMessage}\\n" + 
-	         "registry=${registry}\\n" + 
-	         "image=${image}\\n" + 
-	         "imageTag=${imageTag}"
-	    
+           "fullCommit=${fullCommitID}\\n" +
+           "commitMessage=${gitCommitMessage}\\n" + 
+           "registry=${registry}\\n" + 
+           "image=${image}\\n" + 
+           "imageTag=${imageTag}"
+      
       sh "echo '${result}' > buildData.txt"
       archiveArtifacts 'buildData.txt'
-	
+
       if (deploy) {
         if (!helmInitialized) {
           initalizeHelm ()
@@ -331,9 +337,9 @@ def call(body) {
 
 def notifyDevops (String gitCommit, String fullCommitID, String image, 
   String imageTag, String branchName, String triggerType, String projectName, String projectNamespace, Integer buildNumber) {
-	
+
   notificationEndpoint="${devopsEndpoint}/v1/namespaces/${projectNamespace}/projects/${projectName}/notifications"	
-	
+
   stage ('Notify Devops') {	  
     print "Poking the notification API at ${notificationEndpoint}, parameters..."	
 
