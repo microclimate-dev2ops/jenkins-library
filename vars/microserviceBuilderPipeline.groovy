@@ -132,9 +132,9 @@ def call(body) {
       devopsEndpoint = "https://${devopsHost}:${devopsPort}"
 
       stage ('Extract') {
-        checkout scm
-        fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-        gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+	checkout scm
+	fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+	gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 	previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true)      
 	// If no previous commit is found, below commands need not run but build should continue
 	// Only run when a previous commit exists to avoid pipeline fail on exit code
@@ -144,7 +144,7 @@ def call(body) {
 	}
 	gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
 	echo "Checked out git commit ${gitCommit}"
-	}
+      }
 
       def imageTag = null
       def helmInitialized = false // Lazily initialize Helm but only once
