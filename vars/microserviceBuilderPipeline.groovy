@@ -140,7 +140,7 @@ def call(body) {
 	// Only run when a previous commit exists to avoid pipeline fail on exit code
 	if (previousCommitStatus == 0){ 
 	  previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
-	  echo "Previous commit exists: $previousCommit}"
+	  echo "Previous commit exists: ${previousCommit}"
 	}
         gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
         echo "Checked out git commit ${gitCommit}"
