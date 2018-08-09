@@ -136,7 +136,7 @@ def call(body) {
         fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 	print "before previous commit"
-	previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true).trim()
+	previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true)
       	print "Previous commit status: ${previousCommitStatus}"
 	if (previousCommitStatus == 0){ 
 		print "Status was 0, previous commit exists"
