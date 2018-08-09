@@ -136,7 +136,12 @@ def call(body) {
         fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
 	print "before previous commit"
-        previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+	previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true).trim()
+      	print "Previous commit status: ${previousCommitStatus}"
+	if (previousCommitStatus = 0){ 
+		print "Status was 0, previous commit exists"
+		previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+	}
 	print "After previous commit: ${previousCommit}"
         gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
 	print "Commit message: ${gitCommitMessage}"
@@ -210,6 +215,7 @@ def call(body) {
                 buildCommand += " --pull=true"
               }
               if (previousCommit) {
+	      	print "Previous commit exists if block"
                 buildCommand += " --cache-from ${registry}${image}:${previousCommit}"
               }
               if (libertyLicenseJarBaseUrl) {
