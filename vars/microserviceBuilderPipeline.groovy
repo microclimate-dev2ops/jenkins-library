@@ -138,7 +138,7 @@ def call(body) {
 	print "before previous commit"
 	previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true).trim()
       	print "Previous commit status: ${previousCommitStatus}"
-	if (previousCommitStatus = 0){ 
+	if (previousCommitStatus == 0){ 
 		print "Status was 0, previous commit exists"
 		previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
 	}
