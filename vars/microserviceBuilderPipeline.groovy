@@ -135,9 +135,11 @@ def call(body) {
         checkout scm
         fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
         gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+	print "before previous commit"
         previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+	print "After previous commit: ${previousCommit}"
         gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
-
+	print "Commit message: ${gitCommitMessage}"
         echo "checked out git commit ${gitCommit}"
       }
 
