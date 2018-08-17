@@ -374,37 +374,6 @@ def initalizeHelm () {
   }
 }
 
-def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret, String helmSecret, String helmTlsOptions) {
-  if (chartFolder != null && fileExists(chartFolder)) {
-    container ('helm') {
-      def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
-      if (fileExists("chart/overrides.yaml")) {
-        deployCommand += " --values chart/overrides.yaml"
-      }
-      if (namespace) {
-        deployCommand += " --namespace ${namespace}"
-        createNamespace(namespace, registrySecret)   
-      }
-      if (helmSecret) {
-        echo "adding --tls"
-        deployCommand += helmTlsOptions
-      }
-      def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
-      deployCommand += " ${releaseName} ${chartFolder}"
-      sh deployCommand
-    }
-  } else if (fileExists(manifestFolder)) {
-    container ('kubectl') {
-      def deployCommand = "kubectl apply -f ${manifestFolder}"
-      if (namespace) {
-        createNamespace(namespace, registrySecret)
-        deployCommand += " --namespace ${namespace}"
-      }
-      sh deployCommand
-    }
-  }
-}
-
 /*
   Create target namespace and give access to regsitry
 */
