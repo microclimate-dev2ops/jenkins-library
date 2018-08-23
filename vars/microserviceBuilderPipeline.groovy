@@ -79,7 +79,8 @@ def call(body) {
   print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
   deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
   chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
-
+ 
+  print "Jess print: " + fileExists('pom.xml')
 
   def jobName = (env.JOB_BASE_NAME)
   // E.g. JOB_NAME=default/myproject/master
