@@ -46,6 +46,8 @@ def call(body) {
   body()
 
   print "microserviceBuilderPipeline : config = ${config}"
+	
+  print "Jess print: $(chartFolder)"
 
   def image = config.image
   def maven = (config.mavenImage == null) ? 'maven:3.5.2-jdk-8' : config.mavenImage
