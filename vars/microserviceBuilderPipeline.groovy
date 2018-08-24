@@ -257,6 +257,7 @@ def call(body) {
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
         stage ('Verify') {
+	  print "JESS VERIFY STAGE"
           testNamespace = "testns-${env.BUILD_ID}-" + UUID.randomUUID()
           print "testing against namespace " + testNamespace
           String tempHelmRelease = (image + "-" + testNamespace)
