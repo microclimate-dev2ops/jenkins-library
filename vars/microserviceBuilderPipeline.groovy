@@ -79,9 +79,12 @@ def call(body) {
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.7.2' : config.helmImage
 
-  print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
-  deploy=${deploy} test=${test} debug=${debug} \
-  chartFolder=${chartFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
+  print "microserviceBuilderPipeline: image=${image} build=${build} deploy=${deploy} mvnCommands=${mvnCommands} \
+  test=${test} debug=${debug} chartFolder=${chartFolder} libertyLicenseJarName=${libertyLicenseJarName} \ 
+  registry=${registry} registrySecret=${registrySecret} serviceAccountName=${serviceAccountName} \
+  mcReleaseName=${mcReleaseName} namespace=${namespace} helmSecret=${helmSecret} libertyLicenseJarBaseUrl=${libertyLicenseJarBaseUrl} \
+  mavenSettingsConfigMap=${mavenSettingsConfigMap} alwaysPullImage=${alwaysPullImage} helmTlsOptions=${helmTlsOptions}\
+  maven=${maven} docker=${docker} kubectl=${kubectl} helm=${helm}"
 
   def jobName = (env.JOB_BASE_NAME)
   // E.g. JOB_NAME=default/myproject/master
