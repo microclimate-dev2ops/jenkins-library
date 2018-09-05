@@ -12,8 +12,8 @@
   These are the names of images to be downloaded from https://hub.docker.com/.
 
     mavenImage = 'maven:3.5.2-jdk-8'
-    dockerImage = 'ibmcom/docker:17.10' # todo probs needs changing
-    kubectlImage = 'ibmcom/k8s-kubectl:v1.8.3' # todo probs needs changing
+    dockerImage = 'ibmcom/docker:17.10'
+    kubectlImage = 'ibmcom/k8s-kubectl:v1.8.3'
     helmImage = 'lachlanevenson/k8s-helm:v2.9.1'
 
   You can also specify:
@@ -49,8 +49,8 @@ def call(body) {
 
   def image = config.image
   def maven = (config.mavenImage == null) ? 'maven:3.5.2-jdk-8' : config.mavenImage
-  def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage // todo change?
-  def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage // todo change?
+  def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
+  def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.9.1' : config.helmImage
   def mvnCommands = (config.mvnCommands == null) ? 'package' : config.mvnCommands
   def registry = (env.REGISTRY ?: "").trim()
