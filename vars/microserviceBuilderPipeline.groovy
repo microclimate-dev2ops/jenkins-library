@@ -30,7 +30,7 @@
   mavenImage = 'maven:3.5.2-jdk-8'
   dockerImage = 'ibmcom/docker:17.10'
   kubectlImage = 'ibmcom/k8s-kubectl:v1.8.3'
-  helmImage = 'lachlanevenson/k8s-helm:v2.7.2'
+  helmImage = 'lachlanevenson/k8s-helm:v2.9.1'
 
 -------------------------*/
 
@@ -77,7 +77,7 @@ def call(body) {
   def maven = (config.mavenImage == null) ? 'maven:3.5.2-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
-  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.7.2' : config.helmImage
+  def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.9.1' : config.helmImage
 
   print "microserviceBuilderPipeline: image=${image} build=${build} deploy=${deploy} mvnCommands=${mvnCommands} \
   test=${test} debug=${debug} chartFolder=${chartFolder} libertyLicenseJarName=${libertyLicenseJarName} \
