@@ -8,26 +8,29 @@
     image = 'microservice-test'
   }
 
-  The following parameters may also be specified. Their defaults are shown below.
-  These are the names of images to be downloaded from https://hub.docker.com/.
+  The following parameters may also be specified in your Jenkinsfile:
 
-    mavenImage = 'maven:3.5.2-jdk-8'
-    dockerImage = 'ibmcom/docker:17.10'
-    kubectlImage = 'ibmcom/k8s-kubectl:v1.8.3'
-    helmImage = 'lachlanevenson/k8s-helm:v2.9.1'
+    The convention used below is 'parameter' = 'default value' - description
 
-  You can also specify:
-
-    mvnCommands = 'package'
+    image = no default value - image name must be specified in your Jenkinsfile
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
-    test = 'true' - `mvn verify` is run if this value is `true` and a pom.xml exists
-    debug = 'false' - namespaces created during tests are deleted unless this value is set to 'true'
-    chartFolder = 'chart' - folder containing helm deployment chart
-    manifestFolder = 'manifests' - folder containing kubectl deployment manifests
-    namespace = 'targetNamespace' - deploys into Kubernetes targetNamespace.
-      Default is to deploy into Jenkins' namespace.
-    libertyLicenseJarName - override for Pipeline.LibertyLicenseJar.Name
+
+    Maven projects only:
+    mvnCommands = 'package' - builds project by default, other Maven commands can be specified
+    test = 'true' - 'mvn verify' is run if this value is 'true' and a pom.xml exists
+    debug = 'false' - resources created during tests are deleted unless this value is set to 'true'
+    chartFolder = 'chart' - chart folder to be used for testing only 
+
+    libertyLicenseJarName = '' -  Liberty license jar name to use 
+
+
+  These are the names of images to be downloaded from https://hub.docker.com/.
+
+  mavenImage = 'maven:3.5.2-jdk-8'
+  dockerImage = 'ibmcom/docker:17.10'
+  kubectlImage = 'ibmcom/k8s-kubectl:v1.8.3'
+  helmImage = 'lachlanevenson/k8s-helm:v2.9.1'
 
 -------------------------*/
 
@@ -47,40 +50,42 @@ def call(body) {
 
   print "microserviceBuilderPipeline : config = ${config}"
 
+  // User configurable options
   def image = config.image
+  def build = (config.build ?: env.BUILD ?: "true").toBoolean()
+  def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
+  def mvnCommands = (config.mvnCommands == null) ? 'package' : config.mvnCommands
+  def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
+  def debug = (config.debug ?: (env.DEBUG ?: "false").trim()).toLowerCase() == 'true'
+  def userSpecifiedChartFolder = config.chartFolder
+  def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
+  def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
+
+  // Internal 
+  def registry = (env.REGISTRY ?: "").trim()
+  if (registry && !registry.endsWith('/')) registry = "${registry}/"
+  def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
+  def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
+  def mcReleaseName = (env.RELEASE_NAME).toUpperCase()
+  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
+  def helmSecret = (env.HELM_SECRET ?: "").trim()
+  def libertyLicenseJarBaseUrl = (env.LIBERTY_LICENSE_JAR_BASE_URL ?: "").trim()
+  def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
+  def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
+  def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
+
   def maven = (config.mavenImage == null) ? 'maven:3.5.2-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'ibmcom/docker:17.10' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'lachlanevenson/k8s-helm:v2.9.1' : config.helmImage
-  def mvnCommands = (config.mvnCommands == null) ? 'package' : config.mvnCommands
-  def registry = (env.REGISTRY ?: "").trim()
-  if (registry && !registry.endsWith('/')) registry = "${registry}/"
-  def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
-  def build = (config.build ?: env.BUILD ?: "true").toBoolean()
-  def deploy = (config.deploy ?: env.DEPLOY ?: "true").toBoolean()
-  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
-  def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
 
-  // these options were all added later. Helm chart may not have the associated properties set.
-  def test = (config.test ?: (env.TEST ?: "false").trim()).toLowerCase() == 'true'
-  def debug = (config.debug ?: (env.DEBUG ?: "false").trim()).toLowerCase() == 'true'
-  def helmSecret = (env.HELM_SECRET ?: "").trim()
-  // will need to check later if user provided chartFolder location
-  def userSpecifiedChartFolder = config.chartFolder
-  def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
-  def manifestFolder = config.manifestFolder ?: ((env.MANIFEST_FOLDER ?: "").trim() ?: 'manifests')
-  def libertyLicenseJarBaseUrl = (env.LIBERTY_LICENSE_JAR_BASE_URL ?: "").trim()
-  def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
-  def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
-  def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
-  def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
-  def mcReleaseName = (env.RELEASE_NAME).toUpperCase()
-
-  print "microserviceBuilderPipeline: registry=${registry} registrySecret=${registrySecret} build=${build} \
-  deploy=${deploy} test=${test} debug=${debug} namespace=${namespace} \
-  chartFolder=${chartFolder} manifestFolder=${manifestFolder} alwaysPullImage=${alwaysPullImage} serviceAccountName=${serviceAccountName}"
-
-
+  print "microserviceBuilderPipeline: image=${image} build=${build} deploy=${deploy} mvnCommands=${mvnCommands} \
+  test=${test} debug=${debug} chartFolder=${chartFolder} libertyLicenseJarName=${libertyLicenseJarName} \
+  registry=${registry} registrySecret=${registrySecret} serviceAccountName=${serviceAccountName} \
+  mcReleaseName=${mcReleaseName} namespace=${namespace} helmSecret=${helmSecret} libertyLicenseJarBaseUrl=${libertyLicenseJarBaseUrl} \
+  mavenSettingsConfigMap=${mavenSettingsConfigMap} alwaysPullImage=${alwaysPullImage} helmTlsOptions=${helmTlsOptions} \
+  maven=${maven} docker=${docker} kubectl=${kubectl} helm=${helm}" 
+  
   def jobName = (env.JOB_BASE_NAME)
   // E.g. JOB_NAME=default/myproject/master
   def jobNameSplit = env.JOB_NAME.split("/")	
@@ -248,9 +253,6 @@ def call(body) {
         yamlContent += "\n  repository: ${registry}${image}"
         if (imageTag) yamlContent += "\n  tag: \\\"${imageTag}\\\""
         sh "echo \"${yamlContent}\" > pipeline.yaml"
-      } else if (fileExists(manifestFolder)){
-        sh "find ${manifestFolder} -type f | xargs sed -i 's|\\(image:\\s*\\)${image}:latest|\\1${registry}${image}:latest|g'"
-        sh "find ${manifestFolder} -type f | xargs sed -i 's|\\(image:\\s*\\)${registry}${image}:latest|\\1${registry}${image}:${gitCommit}|g'"
       }
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
@@ -371,52 +373,6 @@ def notifyDevops (String gitCommit, String fullCommitID, String image,
 def initalizeHelm () {
   container ('helm') {
     sh "helm init --skip-refresh --client-only"     
-  }
-}
-
-def deployProject (String chartFolder, String registry, String image, String imageTag, String namespace, String manifestFolder, String registrySecret, String helmSecret, String helmTlsOptions) {
-  if (chartFolder != null && fileExists(chartFolder)) {
-    container ('helm') {
-      def deployCommand = "helm upgrade --install --wait --values pipeline.yaml"
-      if (fileExists("chart/overrides.yaml")) {
-        deployCommand += " --values chart/overrides.yaml"
-      }
-      if (namespace) {
-        deployCommand += " --namespace ${namespace}"
-        createNamespace(namespace, registrySecret)   
-      }
-      if (helmSecret) {
-        echo "adding --tls"
-        deployCommand += helmTlsOptions
-      }
-      def releaseName = (env.BRANCH_NAME == "master") ? "${image}" : "${image}-${env.BRANCH_NAME}"
-      deployCommand += " ${releaseName} ${chartFolder}"
-      sh deployCommand
-    }
-  } else if (fileExists(manifestFolder)) {
-    container ('kubectl') {
-      def deployCommand = "kubectl apply -f ${manifestFolder}"
-      if (namespace) {
-        createNamespace(namespace, registrySecret)
-        deployCommand += " --namespace ${namespace}"
-      }
-      sh deployCommand
-    }
-  }
-}
-
-/*
-  Create target namespace and give access to regsitry
-*/
-def createNamespace(String namespace, String registrySecret) {
-  container ('kubectl') {
-    ns_exists = sh(returnStatus: true, script: "kubectl get namespace ${namespace}")
-    if (ns_exists != 0) {
-      sh "kubectl create namespace ${namespace}"
-      if (registrySecret) {
-        giveRegistryAccessToNamespace (namespace, registrySecret)
-      }
-    }
   }
 }
 
