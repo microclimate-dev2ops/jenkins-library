@@ -60,6 +60,7 @@ def call(body) {
   def userSpecifiedChartFolder = config.chartFolder
   def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
+  def extraGitOptions = config.gitOptions ?: (env.EXTRA_GIT_OPTIONS ?: "").trim()
 
   // Internal 
   def registry = (env.REGISTRY ?: "").trim()
@@ -137,6 +138,11 @@ def call(body) {
       devopsEndpoint = "https://${devopsHost}:${devopsPort}"
 
       stage ('Extract') {
+	  // E.g. may wish to add http.sslVerify false when working with one's own SCM that has self-signed certs
+	  if (extraGitOptions) {
+	    echo "Extra git options found, setting global Git options to include ${extraGitOptions}"
+	    configSet = sh(script: 'git config --global ${extraGitOptions}')
+          }
 	  checkout scm
 	  fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 	  gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
