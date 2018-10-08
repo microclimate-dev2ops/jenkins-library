@@ -15,19 +15,16 @@
     image = no default value - image name must be specified in your Jenkinsfile
     build = 'true' - any value other than 'true' == false
     deploy = 'true' - any value other than 'true' == false
-    
+    gitOptions = '' - any Git config options to use, for example you may wish to provide 
+      --global http.sslVerify false to permit self-signed certificates if you're hosting your own SCM
 
     Maven projects only:
     mvnCommands = 'package' - builds project by default, other Maven commands can be specified
     test = 'true' - 'mvn verify' is run if this value is 'true' and a pom.xml exists
     debug = 'false' - resources created during tests are deleted unless this value is set to 'true'
     chartFolder = 'chart' - chart folder to be used for testing only
-    gitOptions = '' - any extra Git options to be provided when cloning the source to build, 
-    for example you may wish to provide --global http.sslVerify false to permit self-signed certificates, 
-    such as if you're hosting your own source code management system
 
     libertyLicenseJarName = '' -  Liberty license jar name to use 
-
 
   These are the names of images to be downloaded from https://hub.docker.com/.
 
@@ -143,7 +140,7 @@ def call(body) {
 
       stage ('Extract') {
 	  if (extraGitOptions) {
-	    echo "Extra Git options found, setting global Git options to include ${extraGitOptions}"
+	    echo "Extra Git options found, setting Git config options to include ${extraGitOptions}"
 	    configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
 	  }
 	  checkout scm
