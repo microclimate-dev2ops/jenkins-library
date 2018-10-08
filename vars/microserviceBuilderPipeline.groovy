@@ -141,7 +141,7 @@ def call(body) {
 	  // E.g. may wish to add http.sslVerify false when working with one's own SCM that has self-signed certs
 	  if (extraGitOptions) {
 	    echo "Extra Git options found, setting global Git options to include ${extraGitOptions}"
-	    configSet = sh(script: 'git config ${extraGitOptions}', returnStdout: true)
+	    configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
           }
 	  checkout scm
 	  fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
