@@ -142,7 +142,7 @@ def call(body) {
 	  if (extraGitOptions) {
 	    echo "Extra Git options found, setting global Git options to include ${extraGitOptions}"
 	    configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
-          }
+	  }
 	  checkout scm
 	  fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
 	  gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
