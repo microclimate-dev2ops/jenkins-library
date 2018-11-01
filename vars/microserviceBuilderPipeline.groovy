@@ -321,6 +321,7 @@ def call(body) {
                   mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
                 }
                 mvnCommand += " verify"
+		testsAttempted = true
                 verifyAttempt = sh(script: "${mvnCommand} > verify_attempt.txt", returnStatus: true)
                 if (verifyAttempt != 0) {
                   echo "Warning, did not run ${mvnCommand} successfully, error code is: ${verifyAttempt}"		
