@@ -266,7 +266,8 @@ def call(body) {
       }
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
-        stage ('Verify') {
+        stage ('Verify') 
+	        testsAttempted = true
           testNamespace = "testns-${env.BUILD_ID}-" + UUID.randomUUID()
           echo "testing against namespace " + testNamespace
           String tempHelmRelease = (image + "-" + testNamespace)
@@ -309,7 +310,7 @@ def call(body) {
               echo "Warning, did not deploy the test release into the test namespace successfully, error code is: ${testDeployAttempt}" 
               echo "This build will be marked as a failure: halting after the deletion of the test namespace."
             }
-            printFromFile("deploy_attempt.txt")	  
+            printFromFile("deploy_attempt.txt")
           }
 
           container ('maven') {
@@ -320,8 +321,7 @@ def call(body) {
                 if (mavenSettingsConfigMap) {
                   mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
                 }
-                mvnCommand += " verify"
-		testsAttempted = true
+                mvnCommand += " verify"		  
                 verifyAttempt = sh(script: "${mvnCommand} > verify_attempt.txt", returnStatus: true)
                 if (verifyAttempt != 0) {
                   echo "Warning, did not run ${mvnCommand} successfully, error code is: ${verifyAttempt}"		
@@ -375,7 +375,6 @@ def call(body) {
       // tests are enabled and yet something went wrong (e.g. didn't deploy the test release, or tests failed)? Fail the build
       
       echo "Test is " + test + ", tests attempted: " + testsAttempted
-	    
       // Pipelines are created with test = true as a default from the Microclimate Helm chart.
       // If tests were attempted, and then a problem happened (tests failed, or it didn't deploy, fail the build.
       // testsAttempted is set when we enter our testing block: which currently only supports Maven projects.
