@@ -380,10 +380,12 @@ def call(body) {
       }
 
       if (deploy) {
+        echo "Deploy is true"
         if (!helmInitialized) {
           initalizeHelm ()
           helmInitialized = true
         }
+	      echo "Notifying Devops"
         notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
           branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger())
       }
