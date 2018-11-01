@@ -266,7 +266,7 @@ def call(body) {
       }
 
       if (test && fileExists('pom.xml') && realChartFolder != null && fileExists(realChartFolder)) {
-        stage ('Verify') 
+        stage ('Verify') {
 	        testsAttempted = true
           testNamespace = "testns-${env.BUILD_ID}-" + UUID.randomUUID()
           echo "testing against namespace " + testNamespace
@@ -275,7 +275,7 @@ def call(body) {
           while (tempHelmRelease.endsWith('-') || tempHelmRelease.length() > 53) tempHelmRelease = tempHelmRelease.substring(0,tempHelmRelease.length()-1)
   
           container ('kubectl') {
-          def testNSCreationAttempt = sh(returnStatus: true, script: "kubectl create namespace ${testNamespace} > ns_creation_attempt.txt")
+            def testNSCreationAttempt = sh(returnStatus: true, script: "kubectl create namespace ${testNamespace} > ns_creation_attempt.txt")
             if (testNSCreationAttempt != 0) {
               echo "Warning, did not create the test namespace successfully, error code is: ${testNSCreationAttempt}"		
             }
