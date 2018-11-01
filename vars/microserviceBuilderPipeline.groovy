@@ -374,7 +374,7 @@ def call(body) {
         if (verifyAttempt != 0) {
           def message = "Marking the build as a failed one: test was set to true " +
             "and a non-zero return code was returned when running the verify stage in this pipeline. " +
-            "Likely indicates there are test failures to investigate: no further pipeline code will be run."
+            "This indicates there are test failures to investigate or the test release did not deploy. No further pipeline code will be run."
             error(message) // this fails the build with an error
         }
       }
