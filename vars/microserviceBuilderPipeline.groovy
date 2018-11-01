@@ -379,6 +379,9 @@ def call(body) {
       // If tests were attempted, and then a problem happened (tests failed, or it didn't deploy, fail the build.
       // testsAttempted is set when we enter our testing block: which currently only supports Maven projects.
       if (testsAttempted) {
+	      echo "Result of verification is " + verifyAttempt
+	      echo "Result of the test deploy attempt is: " + testDeployAttempt
+	      echo "If either of these values are not 0, we will fail the build"
         if (verifyAttempt != 0 || testDeployAttempt != 0) {
           def message = "Marking the build as a failed one: test was set to true " +
             "and a non-zero return code was returned when running the verify stage in this pipeline. " +
@@ -392,7 +395,7 @@ def call(body) {
           initalizeHelm ()
           helmInitialized = true
         }
-	echo "Notifying Devops"
+	      echo "Notifying Devops"
         notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
           branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger())
       }
