@@ -141,22 +141,22 @@ def call(body) {
       devopsEndpoint = "https://${devopsHost}:${devopsPort}"
 
       stage ('Extract') {
-	  if (extraGitOptions) {
-	    echo "Extra Git options found, setting Git config options to include ${extraGitOptions}"
-	    configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
-	  }
-	  checkout scm
-	  fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-	  gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-	  previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true)      
-	  // If no previous commit is found, below commands need not run but build should continue
-	  // Only run when a previous commit exists to avoid pipeline fail on exit code
-	  if (previousCommitStatus == 0){ 
-	    previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
-	    echo "Previous commit exists: ${previousCommit}"
-	  }
-	  gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
-	  echo "Checked out git commit ${gitCommit}"
+        if (extraGitOptions) {
+          echo "Extra Git options found, setting Git config options to include ${extraGitOptions}"
+          configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
+        }
+        checkout scm
+        fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+        gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+        previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true)      
+        // If no previous commit is found, below commands need not run but build should continue
+        // Only run when a previous commit exists to avoid pipeline fail on exit code
+        if (previousCommitStatus == 0){ 
+          previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+          echo "Previous commit exists: ${previousCommit}"
+        }
+        gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+        echo "Checked out git commit ${gitCommit}"
       }
 
       def imageTag = null
@@ -270,18 +270,18 @@ def call(body) {
           String tempHelmRelease = (image + "-" + testNamespace)
           // Name cannot end in '-' or be longer than 53 chars
           while (tempHelmRelease.endsWith('-') || tempHelmRelease.length() > 53) tempHelmRelease = tempHelmRelease.substring(0,tempHelmRelease.length()-1)
+  
           container ('kubectl') {
-	    def testNSCreationAttempt = sh(returnStatus: true, script: "kubectl create namespace ${testNamespace} > ns_creation_attempt.txt")
+          def testNSCreationAttempt = sh(returnStatus: true, script: "kubectl create namespace ${testNamespace} > ns_creation_attempt.txt")
             if (testNSCreationAttempt != 0) {
-		echo "Warning, did not create the test namespace successfully, error code is: ${testNSCreationAttempt}"		
-	    }
-	    printFromFile("ns_creation_attempt.txt")
-	    def testNSLabelAttempt = sh(returnStatus: true, script: "kubectl label namespace ${testNamespace} test=true > label_attempt.txt")
-	    if (testNSLabelAttempt != 0) {
-	      echo "Warning, did not label the test namespace ${testNamespace} successfully, error code is: ${testNSLabelAttempt}" 
-	    }
-	    printFromFile("label_attempt.txt")
-		
+              echo "Warning, did not create the test namespace successfully, error code is: ${testNSCreationAttempt}"		
+            }
+            printFromFile("ns_creation_attempt.txt")
+            def testNSLabelAttempt = sh(returnStatus: true, script: "kubectl label namespace ${testNamespace} test=true > label_attempt.txt")
+            if (testNSLabelAttempt != 0) {
+              echo "Warning, did not label the test namespace ${testNamespace} successfully, error code is: ${testNSLabelAttempt}" 
+            }
+            printFromFile("label_attempt.txt")
             if (registrySecret) {
               giveRegistryAccessToNamespace (testNamespace, registrySecret)
             }
@@ -290,7 +290,7 @@ def call(body) {
           if (!helmInitialized) {
             initalizeHelm ()
             helmInitialized = true
-          }		
+          }
 	
           container ('helm') {
             echo "Attempting to deploy the test release"
@@ -302,34 +302,31 @@ def call(body) {
               echo "Adding --tls to your deploy command"
               deployCommand += helmTlsOptions
             }
-	    testDeployAttempt = sh(script: "${deployCommand} > deploy_attempt.txt", returnStatus: true)
-	    if (testDeployAttempt != 0) {
-	      echo "Warning, did not deploy the test release into the test namespace successfully, error code is: ${testDeployAttempt}" 
-	      echo "This build will be marked as a failure: halting after the deletion of the test namespace."
-	    }
-	    printFromFile("deploy_attempt.txt")	  
+            testDeployAttempt = sh(script: "${deployCommand} > deploy_attempt.txt", returnStatus: true)
+            if (testDeployAttempt != 0) {
+              echo "Warning, did not deploy the test release into the test namespace successfully, error code is: ${testDeployAttempt}" 
+              echo "This build will be marked as a failure: halting after the deletion of the test namespace."
+            }
+            printFromFile("deploy_attempt.txt")	  
           }
 
           container ('maven') {
             try {
-		    
-	      // We have a test release that we can run our Maven tests on	    
-	      if (testDeployAttempt == 0) {
+              // We have a test release that we can run our Maven tests on	    
+              if (testDeployAttempt == 0) {
                 def mvnCommand = "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
                 if (mavenSettingsConfigMap) {
                   mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
                 }
                 mvnCommand += " verify"
-		    
-	        verifyAttempt = sh(script: "${mvnCommand} > verify_attempt.txt", returnStatus: true)
-	        if (verifyAttempt != 0) {
-	          echo "Warning, did not run ${mvnCommand} successfully, error code is: ${verifyAttempt}"		
-	        }
-	        printFromFile("verify_attempt.txt")    
-	      } else {
-	        echo "Not running tests as we detected that your test release failed to deploy"      
-	      }
-		    
+                verifyAttempt = sh(script: "${mvnCommand} > verify_attempt.txt", returnStatus: true)
+                if (verifyAttempt != 0) {
+                  echo "Warning, did not run ${mvnCommand} successfully, error code is: ${verifyAttempt}"		
+                }
+              printFromFile("verify_attempt.txt")    
+              } else {
+                echo "Not running tests as we detected that your test release failed to deploy"
+              }
             } finally {
               step([$class: 'JUnitResultArchiver', allowEmptyResults: true, testResults: '**/target/failsafe-reports/*.xml'])
               step([$class: 'ArtifactArchiver', artifacts: '**/target/failsafe-reports/*.txt', allowEmptyArchive: true])
@@ -342,28 +339,27 @@ def call(body) {
                         echo "adding --tls"
                         deleteCommand += helmTlsOptions
                       }
-		      // Until this is done, we can't get both stdout and the status code... https://issues.jenkins-ci.org/browse/JENKINS-44930?page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel&showAll=true
-		      def deletionAttempt = sh(script: "$deleteCommand > delete_test_release_attempt.txt", returnStatus: true)
-		      if (deletionAttempt != 0) {
-		        echo "Did not delete the test Helm release, error code from ${deleteCommand} is: ${deletionAttempt}" 
-		      }
-		      printFromFile("delete_test_release_attempt.txt")
+                      // Until this is done, we can't get both stdout and the status code... https://issues.jenkins-ci.org/browse/JENKINS-44930?page=com.atlassian.jira.plugin.system.issuetabpanels%3Acomment-tabpanel&showAll=true
+                      def deletionAttempt = sh(script: "$deleteCommand > delete_test_release_attempt.txt", returnStatus: true)
+                      if (deletionAttempt != 0) {
+                        echo "Did not delete the test Helm release, error code from ${deleteCommand} is: ${deletionAttempt}" 
+                      }
+                      printFromFile("delete_test_release_attempt.txt")
                     }
                   }
-		  // Intentionally do this as the final step in here so we can actually delete it
+                  // Intentionally do this as the final step in here so we can actually delete it
                   // A namespace will not be removed if there's a Kube resource still active in there
                   def testNSDeletionAttempt = sh(script: "kubectl delete namespace ${testNamespace} > delete_test_namespace_attempt.txt", returnStatus: true)
-		  if (testNSDeletionAttempt != 0) {
-	            echo "Did not delete the test namespace ${testNamespace} successfully, error code is: ${testNSDeletionAttempt}" 
-	          }
-		  printFromFile("delete_test_namespace_attempt.txt")
+                  if (testNSDeletionAttempt != 0) {
+                    echo "Did not delete the test namespace ${testNamespace} successfully, error code is: ${testNSDeletionAttempt}" 
+                  }
+                  printFromFile("delete_test_namespace_attempt.txt")
                 }                
               }
             }
           }
         }
       }
-
       def result="commitID=${gitCommit}\\n" + 
            "fullCommit=${fullCommitID}\\n" +
            "commitMessage=${gitCommitMessage}\\n" + 
@@ -373,15 +369,14 @@ def call(body) {
       
       sh "echo '${result}' > buildData.txt"
       archiveArtifacts 'buildData.txt'
-	    
       // tests are enabled and yet something went wrong (e.g. didn't deploy the test release, or tests failed)? Fail the build
       if (test) {
         if (verifyAttempt != 0) {
-	  def message = "Marking the build as a failed one: test was set to true " +
-	    "and a non-zero return code was returned when running the verify stage in this pipeline. " +
-	     "Likely indicates there are test failures to investigate: no further pipeline code will be run."
-	  error(message) // this fails the build with an error
-	}
+          def message = "Marking the build as a failed one: test was set to true " +
+            "and a non-zero return code was returned when running the verify stage in this pipeline. " +
+            "Likely indicates there are test failures to investigate: no further pipeline code will be run."
+            error(message) // this fails the build with an error
+        }
       }
 
       if (deploy) {
