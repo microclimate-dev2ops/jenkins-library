@@ -378,9 +378,8 @@ def call(body) {
             error(message) // this fails the build with an error
         }
       }
-
+      echo "Deploy is " + deploy
       if (deploy) {
-        echo "Deploy is true"
         if (!helmInitialized) {
           initalizeHelm ()
           helmInitialized = true
