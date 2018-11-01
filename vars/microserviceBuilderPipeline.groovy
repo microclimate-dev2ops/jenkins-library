@@ -370,6 +370,8 @@ def call(body) {
       sh "echo '${result}' > buildData.txt"
       archiveArtifacts 'buildData.txt'
       // tests are enabled and yet something went wrong (e.g. didn't deploy the test release, or tests failed)? Fail the build
+      
+      echo "Test is " + test
       if (test) {
         if (verifyAttempt != 0) {
           def message = "Marking the build as a failed one: test was set to true " +
