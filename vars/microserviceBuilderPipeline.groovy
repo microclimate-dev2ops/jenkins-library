@@ -254,6 +254,8 @@ def call(body) {
       }
 
       def realChartFolder = null
+      def testsAttempted = false
+	    
       if (fileExists(chartFolder)) {
         // find the likely chartFolder location
         realChartFolder = getChartFolder(userSpecifiedChartFolder, chartFolder)
@@ -371,9 +373,13 @@ def call(body) {
       archiveArtifacts 'buildData.txt'
       // tests are enabled and yet something went wrong (e.g. didn't deploy the test release, or tests failed)? Fail the build
       
-      echo "Test is " + test
-      if (test) {
-        if (verifyAttempt != 0) {
+      echo "Test is " + test + ", tests attempted: " + testsAttempted
+	    
+      // Pipelines are created with test = true as a default from the Microclimate Helm chart.
+      // If tests were attempted, and then a problem happened (tests failed, or it didn't deploy, fail the build.
+      // testsAttempted is set when we enter our testing block: which currently only supports Maven projects.
+      if (testsAttempted) {
+        if (verifyAttempt != 0) || (testDeployAttempt == 0) {
           def message = "Marking the build as a failed one: test was set to true " +
             "and a non-zero return code was returned when running the verify stage in this pipeline. " +
             "This indicates there are test failures to investigate or the test release did not deploy. No further pipeline code will be run."
