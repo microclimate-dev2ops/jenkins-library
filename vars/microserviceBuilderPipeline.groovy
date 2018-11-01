@@ -382,6 +382,7 @@ def call(body) {
 	      echo "Result of verification is " + verifyAttempt
 	      echo "Result of the test deploy attempt is: " + testDeployAttempt
 	      echo "If either of these values are not 0, we will fail the build"
+	      
         if (verifyAttempt != 0 || testDeployAttempt != 0) {
           def message = "Marking the build as a failed one: test was set to true " +
             "and a non-zero return code was returned when running the verify stage in this pipeline. " +
