@@ -156,6 +156,8 @@ def call(body) {
           echo "Previous commit exists: ${previousCommit}"
         }
         gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+	gitCommitMessage = gitCommitMessage.replace("'", "\'");
+	echo "Git commit message is: ${gitCommitMessage}"
         echo "Checked out git commit ${gitCommit}"
       }
 
@@ -370,7 +372,7 @@ def call(body) {
            "image=${image}\\n" + 
            "imageTag=${imageTag}"
       
-      sh "echo '${result}' > buildData.txt"
+      sh "echo \"${result}\" > buildData.txt"
       archiveArtifacts 'buildData.txt'
       // tests are enabled and yet something went wrong (e.g. didn't deploy the test release, or tests failed)? Fail the build
       
