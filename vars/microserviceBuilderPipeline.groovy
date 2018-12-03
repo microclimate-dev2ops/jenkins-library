@@ -441,10 +441,8 @@ def call(body) {
 }
 
 def printTime(String message) {
-  println "Timing..."
-  println message
-  println ""
-  println new Date().format("ddMMyy.HHmm", TimeZone.getTimeZone('Europe/Amsterdam'))
+  time = new Date().format("ddMMyy.HHmm", TimeZone.getTimeZone('Europe/Amsterdam'))
+  println "Timing, $message: $date"
 }
 
 def printFromFile(String fileName) {
