@@ -441,7 +441,7 @@ def call(body) {
 }
 
 def printTime(String message) {
-  time = new Date().format("ddMMyy.HHmm", TimeZone.getTimeZone('Europe/Amsterdam'))
+  time = new Date().format("ddMMyy.HH:mm.ss", TimeZone.getTimeZone('Europe/Amsterdam'))
   println "Timing, $message: $time"
 }
 
