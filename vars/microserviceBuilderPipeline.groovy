@@ -251,9 +251,9 @@ def call(body) {
               }
               buildCommand += " ."
               if (registrySecret) {
-                sh "ln -s /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
-                sh "mkdir /home/jenkins/.docker"
-                sh "ln -s /msb_reg_sec/.dockerconfigjson /home/jenkins/.docker/config.json"
+                sh "ln -s -f /msb_reg_sec/.dockercfg /home/jenkins/.dockercfg"
+                sh "mkdir -p /home/jenkins/.docker"
+                sh "ln -s -f /msb_reg_sec/.dockerconfigjson /home/jenkins/.docker/config.json"
               }
 	      printTime("About to do build command")
               sh buildCommand
