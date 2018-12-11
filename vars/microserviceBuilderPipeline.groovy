@@ -77,7 +77,7 @@ def call(body) {
   def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
 
   def maven = (config.mavenImage == null) ? 'maven:3.5.2-jdk-8' : config.mavenImage
-  def docker = (config.dockerImage == null) ? 'docker:17.10' : config.dockerImage
+  def docker = (config.dockerImage == null) ? 'docker:18.09.0' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'ibmcom/microclimate-k8s-helm:v2.9.1' : config.helmImage
 
