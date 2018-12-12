@@ -28,8 +28,8 @@
 
   These are the names of images to be downloaded from https://hub.docker.com/.
 
-  mavenImage = 'maven:3.5.2-jdk-8'
-  dockerImage = 'docker:17.10'
+  mavenImage = 'maven:3.6.0-jdk-8'
+  dockerImage = 'docker:18.06.1-ce'
   kubectlImage = 'ibmcom/microclimate-k8s-kubectl:v1.8.3'
   helmImage = 'ibmcom/microclimate-k8s-helm:v2.9.1'
 
