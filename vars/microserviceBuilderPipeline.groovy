@@ -30,7 +30,7 @@
 
   mavenImage = 'maven:3.6.0-jdk-8'
   dockerImage = 'docker:18.06.1-ce'
-  kubectlImage = 'lachlanevenson/k8s-kubectl:v1.13.0'
+  kubectlImage = 'ibmcom/microclimate-utils:test'
   helmImage = 'ibmcom/microclimate-k8s-helm:v2.9.1'
 
 -------------------------*/
