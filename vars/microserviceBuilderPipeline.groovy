@@ -175,7 +175,7 @@ def call(body) {
           stage ('Maven Build') {
             container ('maven') {
 	      printTime("Starting maven build")
-              def mvnCommand = "mvn -T 1C -B"
+              def mvnCommand = "mvn -B"
               if (mavenSettingsConfigMap) {
                 mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
               }
@@ -341,7 +341,7 @@ def call(body) {
               // We have a test release that we can run our Maven tests on	
 	      printTime("In Maven container to run tests with")
               if (testDeployAttempt == 0) {
-                def mvnCommand = "mvn -T 1C -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
+                def mvnCommand = "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
                 if (mavenSettingsConfigMap) {
                   mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
                 }
