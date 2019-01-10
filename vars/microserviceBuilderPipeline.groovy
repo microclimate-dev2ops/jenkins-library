@@ -78,7 +78,7 @@ def call(body) {
 
   def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker:18.06.1-ce' : config.dockerImage
-  def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-k8s-kubectl:v1.8.3' : config.kubectlImage
+  def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-utils:test' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'ibmcom/microclimate-k8s-helm:v2.9.1' : config.helmImage
 
   print "microserviceBuilderPipeline: image=${image} build=${build} deploy=${deploy} mvnCommands=${mvnCommands} \
