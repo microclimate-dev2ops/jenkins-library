@@ -341,7 +341,7 @@ def call(body) {
               // We have a test release that we can run our Maven tests on	
 	      printTime("In Maven container to run tests with")
               if (testDeployAttempt == 0) {
-                def mvnCommand = "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
+                def mvnCommand = "mvn -B -DforkCount=0 -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
                 if (mavenSettingsConfigMap) {
                   mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
                 }
