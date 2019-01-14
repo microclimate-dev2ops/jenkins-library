@@ -28,7 +28,7 @@
 
   These are the names of images to be downloaded from https://hub.docker.com/.
 
-  mavenImage = 'maven:3.6.0-jdk-8'
+  mavenImage = 'maven:3.6.0-jdk-8-alpine'
   dockerImage = 'docker:18.06.1-ce'
   kubectlImage = 'ibmcom/microclimate-k8s-kubectl:v1.8.3'
   helmImage = 'ibmcom/microclimate-k8s-helm:v2.9.1'
@@ -76,7 +76,7 @@ def call(body) {
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
 
-  def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8' : config.mavenImage
+  def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8-alpine' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker:18.06.1-ce' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-k8s-kubectl:v1.8.3' : config.kubectlImage
   def helm = (config.helmImage == null) ? 'ibmcom/microclimate-k8s-helm:v2.9.1' : config.helmImage
@@ -341,7 +341,7 @@ def call(body) {
               // We have a test release that we can run our Maven tests on	
 	      printTime("In Maven container to run tests with")
               if (testDeployAttempt == 0) {
-                def mvnCommand = "mvn -B -DforkCount=0 -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
+                def mvnCommand = "mvn -B -Dnamespace.use.existing=${testNamespace} -Denv.init.enabled=false"
                 if (mavenSettingsConfigMap) {
                   mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
                 }
