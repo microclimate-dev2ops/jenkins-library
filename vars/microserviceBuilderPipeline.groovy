@@ -62,6 +62,10 @@ def call(body) {
   def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def extraGitOptions = config.gitOptions ?: (env.EXTRA_GIT_OPTIONS ?: "").trim()
+  def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8-alpine' : config.mavenImage
+  def docker = (config.dockerImage == null) ? 'docker:18.06.1-ce' : config.dockerImage
+  def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-utils:1901' : config.kubectlImage
+  def helm = (config.helmImage == null) ? 'ibmcom/microclimate-k8s-helm:v2.9.1' : config.helmImage
 
   // Internal 
   def registry = (env.REGISTRY ?: "").trim()
@@ -75,11 +79,6 @@ def call(body) {
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
   def alwaysPullImage = (env.ALWAYS_PULL_IMAGE == null) ? true : env.ALWAYS_PULL_IMAGE.toBoolean()
   def helmTlsOptions = " --tls --tls-ca-cert=/msb_helm_sec/ca.pem --tls-cert=/msb_helm_sec/cert.pem --tls-key=/msb_helm_sec/key.pem " 
-
-  def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8-alpine' : config.mavenImage
-  def docker = (config.dockerImage == null) ? 'docker:18.06.1-ce' : config.dockerImage
-  def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-utils:1901' : config.kubectlImage
-  def helm = (config.helmImage == null) ? 'ibmcom/microclimate-k8s-helm:v2.9.1' : config.helmImage
 
   print "microserviceBuilderPipeline: image=${image} build=${build} deploy=${deploy} mvnCommands=${mvnCommands} \
   test=${test} debug=${debug} chartFolder=${chartFolder} libertyLicenseJarName=${libertyLicenseJarName} \
