@@ -169,8 +169,6 @@ def call(body) {
 	  gitCommitMessage = gitCommitMessage.replace("'", "\'");
 	  echo "Git commit message is: ${gitCommitMessage}"
           echo "Checked out git commit ${gitCommit}"
-      def arr = new int[3];
-      arr[5] = 5;
         } catch(Exception ex) {
           print "Error in Extract"
           notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
