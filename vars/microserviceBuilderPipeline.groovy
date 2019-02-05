@@ -170,10 +170,10 @@ def call(body) {
 	  echo "Git commit message is: ${gitCommitMessage}"
           echo "Checked out git commit ${gitCommit}"
         } catch(Exception ex) {
-          print "Error in Extract"
+          print "Error in Extract: " + ex.toString()
           notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
              branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "FAILED")
-          error "Stop execution"  
+          error "Stop execution: " + ex.toString()  
         }
       } 
 
@@ -192,10 +192,10 @@ def call(body) {
 	        printTime("Done Maven build")
               }
             } catch(Exception ex) {
-              print "Error in Maven build"
+              print "Error in Maven build:" + ex.toString()
               notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
                  branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "FAILED")
-              error "Stop execution"  
+              error "Stop execution: "  + ex.toString()  
             }
           }
         }
@@ -281,10 +281,10 @@ def call(body) {
               }
             }
             } catch(Exception ex) {
-              print "Error in Docker build"
+              print "Error in Docker build: " + ex.toString()
               notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
                  branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "FAILED")
-              error "Stop execution"  
+              error "Stop execution: " + ex.toString()  
             }
           }
         }
