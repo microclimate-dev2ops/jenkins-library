@@ -62,6 +62,7 @@ def call(body) {
   def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def extraGitOptions = config.gitOptions ?: (env.EXTRA_GIT_OPTIONS ?: "").trim()
+  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8-alpine' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker:18.06.1-ce' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-utils:1901' : config.kubectlImage
@@ -73,7 +74,6 @@ def call(body) {
   def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
   def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
   def mcReleaseName = (env.RELEASE_NAME).toUpperCase()
-  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def helmSecret = (env.HELM_SECRET ?: "").trim()
   def libertyLicenseJarBaseUrl = (env.LIBERTY_LICENSE_JAR_BASE_URL ?: "").trim()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
@@ -126,7 +126,7 @@ def call(body) {
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
-      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat')
     ],
     volumes: volumes
   ) {
@@ -142,45 +142,59 @@ def call(body) {
       devopsPort = sh(script: "echo \$${mcReleaseName}_IBM_MICROCLIMATE_DEVOPS_SERVICE_PORT", returnStdout: true).trim()	      
       devopsEndpoint = "https://${devopsHost}:${devopsPort}"
 
-      stage ('Extract') {
-	printTime("In the extract stage")
-        if (extraGitOptions) {
-          echo "Extra Git options found, setting Git config options to include ${extraGitOptions}"
-          configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
-        }
-        checkout scm
-
-	printTime("checkout scm done")
-
-        fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
-        gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-        previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true)      
-        // If no previous commit is found, below commands need not run but build should continue
-        // Only run when a previous commit exists to avoid pipeline fail on exit code
-        if (previousCommitStatus == 0){ 
-          previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
-          echo "Previous commit exists: ${previousCommit}"
-        }
-        gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
-	gitCommitMessage = gitCommitMessage.replace("'", "\'");
-	echo "Git commit message is: ${gitCommitMessage}"
-        echo "Checked out git commit ${gitCommit}"
-      }
-
       def imageTag = null
       def helmInitialized = false // Lazily initialize Helm but only once
+      stage ('Extract') {
+        try {
+	  printTime("In the extract stage")
+          if (extraGitOptions) {
+            echo "Extra Git options found, setting Git config options to include ${extraGitOptions}"
+            configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
+          }
+          checkout scm
+
+	  printTime("checkout scm done")
+
+          fullCommitID = sh(script: 'git rev-parse HEAD', returnStdout: true).trim()
+          gitCommit = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+          previousCommitStatus = sh(script: 'git rev-parse -q --short HEAD~1', returnStatus: true)      
+          // If no previous commit is found, below commands need not run but build should continue
+          // Only run when a previous commit exists to avoid pipeline fail on exit code
+          if (previousCommitStatus == 0){ 
+            previousCommit = sh(script: 'git rev-parse -q --short HEAD~1', returnStdout: true).trim()
+            echo "Previous commit exists: ${previousCommit}"
+          }
+          gitCommitMessage = sh(script: 'git log --format=%B -n 1 ${gitCommit}', returnStdout: true)
+	  gitCommitMessage = gitCommitMessage.replace("'", "\'");
+	  echo "Git commit message is: ${gitCommitMessage}"
+          echo "Checked out git commit ${gitCommit}"
+        } catch(Exception ex) {
+          print "Error in Extract: " + ex.toString()
+          notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
+             branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "FAILED")
+          error "Stop execution: " + ex.toString()  
+        }
+      } 
+
       if (build) {
         if (fileExists('pom.xml')) {
           stage ('Maven Build') {
-            container ('maven') {
-	      printTime("Starting maven build")
-              def mvnCommand = "mvn -B"
-              if (mavenSettingsConfigMap) {
-                mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
+            try {
+              container ('maven') {
+	        printTime("Starting maven build")
+                def mvnCommand = "mvn -B"
+                if (mavenSettingsConfigMap) {
+                  mvnCommand += " --settings /msb_mvn_cfg/settings.xml"
+                }
+                mvnCommand += " ${mvnCommands}"
+                sh mvnCommand
+	        printTime("Done Maven build")
               }
-              mvnCommand += " ${mvnCommands}"
-              sh mvnCommand
-	      printTime("Done Maven build")
+            } catch(Exception ex) {
+              print "Error in Maven build:" + ex.toString()
+              notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
+                 branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "FAILED")
+              error "Stop execution: "  + ex.toString()  
             }
           }
         }
@@ -222,6 +236,7 @@ def call(body) {
           }
           
           stage ('Docker Build') {
+            try {
             container ('docker') {
 	      printTime("About to Docker build")
               imageTag = gitCommit
@@ -263,6 +278,12 @@ def call(body) {
                 sh "docker push ${registry}${image}:${imageTag}"
 		printTime("Done pushing to Docker registry")
               }
+            }
+            } catch(Exception ex) {
+              print "Error in Docker build: " + ex.toString()
+              notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
+                 branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "FAILED")
+              error "Stop execution: " + ex.toString()  
             }
           }
         }
@@ -431,8 +452,10 @@ def call(body) {
         }
 	printTime("About to notify devops")
 	echo "Notifying Devops"
-        notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
-          branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger())
+        stage ('Notify Devops') {	  
+          notifyDevops(gitCommit, fullCommitID, registry + image, imageTag, 
+            branchName, "build", projectName, projectNamespace, env.BUILD_NUMBER.toInteger(), "")
+        }
 	printTime("Done notifying devops")
       }
     }
@@ -450,31 +473,29 @@ def printFromFile(String fileName) {
 }
 
 def notifyDevops (String gitCommit, String fullCommitID, String image, 
-  String imageTag, String branchName, String triggerType, String projectName, String projectNamespace, Integer buildNumber) {
+  String imageTag, String branchName, String triggerType, String projectName, String projectNamespace, Integer buildNumber, String status) {
 
   notificationEndpoint="${devopsEndpoint}/v1/namespaces/${projectNamespace}/projects/${projectName}/notifications"	
 
-  stage ('Notify Devops') {	  
-    print "Poking the notification API at ${notificationEndpoint}, parameters..."	
+  print "Poking the notification API at ${notificationEndpoint}, parameters..."	
 
-    print "gitCommit=${gitCommit}, fullCommitID=${fullCommitID}, image: ${image} \
-      imageTag=${imageTag}, branchName=${branchName}, triggerType=${triggerType} \
-      buildNumber=${buildNumber}"
+  print "gitCommit=${gitCommit}, fullCommitID=${fullCommitID}, image: ${image} \
+    imageTag=${imageTag}, branchName=${branchName}, triggerType=${triggerType} \
+    buildNumber=${buildNumber}"
 
-    def notificationData = [
-      chart: [gitCommit: gitCommit, fullCommit: fullCommitID],
-      overrides: [image: [repository: image, tag: imageTag]],
-      trigger: [type: triggerType, branch: branchName],
-      clusterConfigSecret: "",
-      namespace: "",
-      status: "",
-      buildNumber: buildNumber
-    ]
+  def notificationData = [
+    chart: [gitCommit: gitCommit, fullCommit: fullCommitID],
+    overrides: [image: [repository: image, tag: imageTag]],
+    trigger: [type: triggerType, branch: branchName],
+    clusterConfigSecret: "",
+    namespace: "",
+    status: status,
+    buildNumber: buildNumber
+  ]
 
-    def payload = JsonOutput.toJson(notificationData)
-    notification = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d '${payload}' $notificationEndpoint" ].execute().text
-    print "Devops notification response: ${notification}"
-  }
+  def payload = JsonOutput.toJson(notificationData)
+  notification = [ 'bash', '-c', "curl -v -k -X POST -H \"Content-Type: application/json\" -d '${payload}' $notificationEndpoint" ].execute().text
+  print "Devops notification response: ${notification}"
 }
 
 def initalizeHelm () {
