@@ -62,6 +62,7 @@ def call(body) {
   def chartFolder = userSpecifiedChartFolder ?: ((env.CHART_FOLDER ?: "").trim() ?: 'chart')
   def libertyLicenseJarName = config.libertyLicenseJarName ?: (env.LIBERTY_LICENSE_JAR_NAME ?: "").trim()
   def extraGitOptions = config.gitOptions ?: (env.EXTRA_GIT_OPTIONS ?: "").trim()
+  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def maven = (config.mavenImage == null) ? 'maven:3.6.0-jdk-8-alpine' : config.mavenImage
   def docker = (config.dockerImage == null) ? 'docker:18.06.1-ce' : config.dockerImage
   def kubectl = (config.kubectlImage == null) ? 'ibmcom/microclimate-utils:1901' : config.kubectlImage
@@ -73,7 +74,6 @@ def call(body) {
   def registrySecret = (env.REGISTRY_SECRET ?: "").trim()
   def serviceAccountName = (env.SERVICE_ACCOUNT_NAME ?: "default").trim()
   def mcReleaseName = (env.RELEASE_NAME).toUpperCase()
-  def namespace = (config.namespace ?: env.NAMESPACE ?: "").trim()
   def helmSecret = (env.HELM_SECRET ?: "").trim()
   def libertyLicenseJarBaseUrl = (env.LIBERTY_LICENSE_JAR_BASE_URL ?: "").trim()
   def mavenSettingsConfigMap = env.MAVEN_SETTINGS_CONFIG_MAP?.trim()
@@ -126,7 +126,7 @@ def call(body) {
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
-      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat')
     ],
     volumes: volumes
   ) {
