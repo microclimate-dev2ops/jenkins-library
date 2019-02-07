@@ -126,7 +126,7 @@ def call(body) {
           containerEnvVar(key: 'DOCKER_API_VERSION', value: '1.23.0')
         ]),
       containerTemplate(name: 'kubectl', image: kubectl, ttyEnabled: true, command: 'cat'),
-      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat'),
+      containerTemplate(name: 'helm', image: helm, ttyEnabled: true, command: 'cat')
     ],
     volumes: volumes
   ) {
