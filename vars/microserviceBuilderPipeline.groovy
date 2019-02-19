@@ -151,7 +151,7 @@ def call(body) {
             echo "Extra Git options found, setting Git config options to include ${extraGitOptions}"
             configSet = sh(script: "git config ${extraGitOptions}", returnStdout: true)
           }
-          if (fileExists('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt') {
+          if (fileExists('/var/run/secrets/kubernetes.io/serviceaccount/ca.crt')) {
             echo "Adding local cluster certificate"
             sh(script: "git config --global http.sslCAInfo /var/run/secrets/kubernetes.io/serviceaccount/ca.crt", returnStdout: true)
           }
